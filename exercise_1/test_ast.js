@@ -15,7 +15,10 @@ async function readTsFiles(filePaths) {
     function parseObject(node) {
       const obj = {};
       ts.forEachChild(node, (property) => {
-        if (ts.isPropertyAssignment(property)) {
+        if (
+          ts.isPropertyAssignment(property) ||
+          ts.isShorthandPropertyAssignment(property)
+        ) {
           const name = property.name.getText();
           if (ts.isObjectLiteralExpression(property.initializer)) {
             obj[name] = {
@@ -31,8 +34,10 @@ async function readTsFiles(filePaths) {
             };
           } else {
             obj[name] = {
-              types: ["string"],
-              value: property.initializer.getText().replace(/['"]+/g, ""),
+              types: ["unknown"],
+              value: property.initializer
+                ? property.initializer.getText().replace(/['"]+/g, "")
+                : null,
             };
           }
         }
@@ -112,14 +117,25 @@ async function readTsFiles(filePaths) {
                 params: methodParams,
                 returnResult: [methodReturnType],
               };
+            } else if (ts.isConstructorDeclaration(member)) {
+              member.parameters.forEach((param) => {
+                const paramName = param.name.getText();
+                const paramType = param.type
+                  ? param.type.getText().trim()
+                  : "unknown";
+                classMembers[paramName] = { types: [paramType], value: null };
+              });
             } else if (ts.isPropertyDeclaration(member)) {
               const propertyName = member.name.getText();
               const propertyType = member.type
                 ? member.type.getText().trim()
                 : "unknown";
+              const initializer = member.initializer
+                ? member.initializer.getText().trim().replace(/['"]+/g, "")
+                : null;
               classMembers[propertyName] = {
                 types: [propertyType],
-                value: null,
+                value: initializer,
               };
             }
           });
@@ -148,8 +164,6 @@ async function readTsFiles(filePaths) {
     console.error("Ошибка при чтении файлов:", err);
   }
 }
-
-// readTsFiles(["main.ts", "unique_typescript.ts"]);
 
 readTsFiles(["main.ts", "unique_typescript.ts"]);
 
