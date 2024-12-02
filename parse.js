@@ -138,7 +138,7 @@ function readTsFiles(filePaths) {
         case ts.SyntaxKind.VariableStatement:
           node.declarationList.declarations.forEach((declaration) => {
             const name = declaration.name.getText();
-            let type = "unknown";
+            let type = "any"; // Set default type to "any"
             if (declaration.type) {
               type = declaration.type.getText().trim();
             } else if (
@@ -150,7 +150,7 @@ function readTsFiles(filePaths) {
               declaration.initializer &&
               ts.isLiteralExpression(declaration.initializer)
             ) {
-              type = typeof eval(declaration.initializer.getText());
+              type = "any"; // Default type to "any"
             } else if (
               declaration.initializer &&
               ts.isArrayLiteralExpression(declaration.initializer)
@@ -161,6 +161,26 @@ function readTsFiles(filePaths) {
               ts.isObjectLiteralExpression(declaration.initializer)
             ) {
               type = "object";
+            } else if (
+              declaration.initializer &&
+              declaration.initializer.kind ===
+                ts.SyntaxKind.PrefixUnaryExpression &&
+              (declaration.initializer.operator === ts.SyntaxKind.MinusToken ||
+                declaration.initializer.operator === ts.SyntaxKind.PlusToken)
+            ) {
+              type = "any"; // Default type to "any"
+            } else if (
+              declaration.initializer &&
+              declaration.initializer.kind === ts.SyntaxKind.Identifier &&
+              ["NaN", "Infinity"].includes(declaration.initializer.getText())
+            ) {
+              type = "any"; // Default type to "any"
+            } else if (
+              declaration.initializer &&
+              ts.isPropertyAccessExpression(declaration.initializer) &&
+              declaration.initializer.expression.getText() === "Number"
+            ) {
+              type = "any"; // Default type to "any"
             }
 
             const initializer = declaration.initializer
@@ -224,9 +244,10 @@ function readTsFiles(filePaths) {
           node.members.forEach((member) => {
             if (ts.isMethodDeclaration(member)) {
               const methodName = member.name.getText();
-              const methodParams = member.parameters.map((param) =>
-                param.getText().trim()
-              );
+              const methodParams = member.parameters.map((param) => ({
+                name: param.name.getText(),
+                type: param.type ? param.type.getText().trim() : "any", // Set default type to "any"
+              }));
               const type = checker.getTypeAtLocation(member);
               const signature = type.getCallSignatures()[0];
               const returnType = signature.getReturnType();
@@ -241,7 +262,7 @@ function readTsFiles(filePaths) {
                 const paramName = param.name.getText();
                 const paramType = param.type
                   ? param.type.getText().trim()
-                  : "unknown";
+                  : "any"; // Set default type to "any"
                 classMembers[paramName] = { types: [paramType], value: null };
               });
             } else if (ts.isPropertyDeclaration(member)) {
@@ -275,7 +296,7 @@ function readTsFiles(filePaths) {
       }
     }
 
-    console.log("Все найденные элементы:", allVariables.variables);
+    console.log("Все найденные элементы:", allVariables.functions);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);

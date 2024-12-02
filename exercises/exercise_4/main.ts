@@ -11,5 +11,3 @@ const negZero = -0;
 const actuallyNumber = NaN;
 const largestNumber = Number.MAX_VALUE;
 const mostBiglyNumber = Infinity;
-
-
