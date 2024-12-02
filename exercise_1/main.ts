@@ -16,7 +16,7 @@ const user: User = {
   id: 0,
 };
 
-const str = "paeroaqwe1";
+const str = "paeroaqwe1" as number;
 
 const client = {
   name: "Hayes",
@@ -31,3 +31,36 @@ const client = {
 function add(a: number, b: number) {
   a + b;
 }
+
+function multiple(a: number, b: number) {
+  return a * b;
+}
+class Client {
+  id: number;
+  name: string;
+
+  constructor(id: number, name: string) {
+    this.id = id;
+    this.name = name;
+  }
+
+  sayName() {
+    console.log(`Hello ${this.name}`);
+  }
+
+  saySomething(someThing: string) {
+    console.log(`Hello ${someThing}`);
+  }
+}
+
+enum roles {
+  ADMIN = "ADMIN",
+  MANAGER = "MANAGER",
+  MODERATOR = "MODERATOR",
+}
+
+let b = "It's string";
+
+let c = 7;
+
+const strArr = ["123", "456", "789"];

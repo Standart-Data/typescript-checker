@@ -85,18 +85,33 @@ function readTsFiles(filePaths) {
       classes: {},
     };
 
-    function parseObject(node) {
+    function parseObject(node, typeNode = null, checker = null) {
       const obj = {};
+      const propertiesMap = {};
+
+      if (typeNode && checker) {
+        const type = checker.getTypeAtLocation(typeNode);
+        type.getProperties().forEach((prop) => {
+          const propType = checker.getTypeOfSymbolAtLocation(
+            prop,
+            prop.valueDeclaration
+          );
+          propertiesMap[prop.name] = checker.typeToString(propType);
+        });
+      }
+
       ts.forEachChild(node, (property) => {
-        if (
-          ts.isPropertyAssignment(property) ||
-          ts.isShorthandPropertyAssignment(property)
-        ) {
-          const name = property.name.getText();
+        const name = property.name ? property.name.getText() : undefined;
+        if (name) {
+          let type = propertiesMap[name] || "unknown";
           if (ts.isObjectLiteralExpression(property.initializer)) {
             obj[name] = {
               types: ["object"],
-              value: parseObject(property.initializer),
+              value: parseObject(
+                property.initializer,
+                property.initializer,
+                checker
+              ),
             };
           } else if (ts.isArrayLiteralExpression(property.initializer)) {
             obj[name] = {
@@ -107,7 +122,7 @@ function readTsFiles(filePaths) {
             };
           } else {
             obj[name] = {
-              types: ["unknown"],
+              types: [type],
               value: property.initializer
                 ? property.initializer.getText().replace(/['"]+/g, "")
                 : null,
@@ -118,29 +133,51 @@ function readTsFiles(filePaths) {
       return obj;
     }
 
-    function parseNode(node) {
+    function parseNode(node, checker) {
       switch (node.kind) {
         case ts.SyntaxKind.VariableStatement:
           node.declarationList.declarations.forEach((declaration) => {
             const name = declaration.name.getText();
-            const type = declaration.type
-              ? declaration.type.getText().trim()
-              : "unknown";
+            let type = "unknown";
+            if (declaration.type) {
+              type = declaration.type.getText().trim();
+            } else if (
+              declaration.initializer &&
+              ts.isAsExpression(declaration.initializer)
+            ) {
+              type = declaration.initializer.type.getText().trim();
+            } else if (
+              declaration.initializer &&
+              ts.isLiteralExpression(declaration.initializer)
+            ) {
+              type = typeof eval(declaration.initializer.getText());
+            } else if (
+              declaration.initializer &&
+              ts.isArrayLiteralExpression(declaration.initializer)
+            ) {
+              type = "array";
+            }
+
             const initializer = declaration.initializer
-              ? declaration.initializer
+              ? declaration.initializer.getText().trim().replace(/['"]+/g, "")
               : null;
 
-            if (initializer && ts.isObjectLiteralExpression(initializer)) {
+            if (
+              initializer &&
+              ts.isObjectLiteralExpression(declaration.initializer)
+            ) {
               allVariables.variables[name] = {
                 types: [type],
-                value: parseObject(initializer),
+                value: parseObject(
+                  declaration.initializer,
+                  declaration.type,
+                  checker
+                ),
               };
             } else {
               allVariables.variables[name] = {
                 types: [type],
-                value: initializer
-                  ? initializer.getText().trim().replace(/['"]+/g, "")
-                  : null,
+                value: initializer,
               };
             }
           });
@@ -156,17 +193,20 @@ function readTsFiles(filePaths) {
         case ts.SyntaxKind.FunctionDeclaration:
           const functionName = node.name.getText();
           const params = node.parameters.map((param) => param.getText().trim());
-          const returnType = node.type ? node.type.getText().trim() : "void";
+          const type = checker.getTypeAtLocation(node);
+          const signature = type.getCallSignatures()[0];
+          const returnType = signature.getReturnType();
+          const returnTypeString = checker.typeToString(returnType);
           allVariables.functions[functionName] = {
             types: ["function"],
             params,
-            returnResult: [returnType],
+            returnResult: [returnTypeString],
           };
           break;
         case ts.SyntaxKind.TypeAliasDeclaration:
           const typeName = node.name.getText();
-          const type = node.type.getText().trim();
-          allVariables.types[typeName] = type;
+          const aliasType = node.type.getText().trim();
+          allVariables.types[typeName] = aliasType;
           break;
         case ts.SyntaxKind.EnumDeclaration:
           const enumName = node.name.getText();
@@ -182,13 +222,14 @@ function readTsFiles(filePaths) {
               const methodParams = member.parameters.map((param) =>
                 param.getText().trim()
               );
-              const methodReturnType = member.type
-                ? member.type.getText().trim()
-                : "void";
+              const type = checker.getTypeAtLocation(member);
+              const signature = type.getCallSignatures()[0];
+              const returnType = signature.getReturnType();
+              const returnTypeString = checker.typeToString(returnType);
               classMembers[methodName] = {
                 types: ["function"],
                 params: methodParams,
-                returnResult: [methodReturnType],
+                returnResult: [returnTypeString],
               };
             } else if (ts.isConstructorDeclaration(member)) {
               member.parameters.forEach((param) => {
@@ -219,37 +260,20 @@ function readTsFiles(filePaths) {
       }
     }
 
-    for (const filePath of filePaths) {
-      const data = fs.readFileSync(filePath, "utf-8");
-      const sourceFile = ts.createSourceFile(
-        filePath,
-        data,
-        ts.ScriptTarget.Latest,
-        true
-      );
+    const program = ts.createProgram(filePaths, {});
+    const checker = program.getTypeChecker();
 
-      ts.forEachChild(sourceFile, parseNode);
+    for (const filePath of filePaths) {
+      const sourceFile = program.getSourceFile(filePath);
+      if (sourceFile) {
+        ts.forEachChild(sourceFile, (node) => parseNode(node, checker));
+      }
     }
 
-    console.log("Все найденные элементы:", allVariables);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);
   }
 }
-
-// Использование: передайте массив путей к файлам .ts для обработки
-
-readTsFiles(["main.ts", "unique_typescript.ts"]);
-
-describe("First test", function () {
-  it("В коде объявлена переменная a c типом number", function () {
-    assert.ok(allVariables["a"]["type"].includes("number"));
-  });
-});
-//   it("В коде объявлена переменная b c типом string", function () {
-//     assert.ok(allVariables["b"]["type"].includes("string"));
-//   });
-// });
 
 module.exports = { parseTypeScriptString, readTsFiles };
