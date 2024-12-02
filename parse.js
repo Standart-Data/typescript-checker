@@ -103,7 +103,7 @@ function readTsFiles(filePaths) {
       ts.forEachChild(node, (property) => {
         const name = property.name ? property.name.getText() : undefined;
         if (name) {
-          let type = propertiesMap[name] || "unknown";
+          let type = propertiesMap[name] || "object";
           if (ts.isObjectLiteralExpression(property.initializer)) {
             obj[name] = {
               types: ["object"],
@@ -156,6 +156,11 @@ function readTsFiles(filePaths) {
               ts.isArrayLiteralExpression(declaration.initializer)
             ) {
               type = "array";
+            } else if (
+              declaration.initializer &&
+              ts.isObjectLiteralExpression(declaration.initializer)
+            ) {
+              type = "object";
             }
 
             const initializer = declaration.initializer
@@ -270,6 +275,7 @@ function readTsFiles(filePaths) {
       }
     }
 
+    console.log("Все найденные элементы:", allVariables.variables);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);
