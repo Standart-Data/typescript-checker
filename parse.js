@@ -217,7 +217,10 @@ function readTsFiles(filePaths) {
           break;
         case ts.SyntaxKind.FunctionDeclaration:
           const functionName = node.name.getText();
-          const params = node.parameters.map((param) => param.getText().trim());
+          const params = node.parameters.map((param) => ({
+            name: param.name.getText(),
+            type: param.type ? param.type.getText().trim() : "any", // Set default type to "any"
+          }));
           const type = checker.getTypeAtLocation(node);
           const signature = type.getCallSignatures()[0];
           const returnType = signature.getReturnType();
@@ -296,7 +299,7 @@ function readTsFiles(filePaths) {
       }
     }
 
-    console.log("Все найденные элементы:", allVariables.functions);
+    console.log("Все найденные элементы:", allVariables);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);

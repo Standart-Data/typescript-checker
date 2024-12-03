@@ -5,14 +5,14 @@
 // Add a constructor to initialize these properties.
 // Create an instance of the `Car` class and log it to the console.
 
-
 class Car {
+  make: string;
+  model: string;
+  year: number;
 
-    //
-
-    constructor(make, model, year) {
-        this.make = make;
-        this.model = model;
-        this.year = year;
-    }
+  constructor(make: string, model: string, year: number) {
+    this.make = make;
+    this.model = model;
+    this.year = year;
+  }
 }

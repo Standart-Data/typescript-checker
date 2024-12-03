@@ -4,11 +4,15 @@ const assert = require("assert");
 const allVariables = readTsFiles(["./main.ts"]);
 
 describe("First test", function () {
-  it("В коде объявлена переменная a c типом number", function () {
-    assert.ok(allVariables.variables["pi"]["types"].includes("number"));
+  it("В коде объявлен класс Car с параметром make с типом string", function () {
+    assert.ok(allVariables.classes["Car"]["make"]["types"].includes("string"));
   });
 
-  it("В коде объявлена переменная b c типом string", function () {
-    assert.ok(allVariables.variables["tau"]["types"].includes("number"));
+  it("В коде объявлен класс Car с параметром model с типом string", function () {
+    assert.ok(allVariables.classes["Car"]["model"]["types"].includes("string"));
+  });
+
+  it("В коде объявлен класс Car с параметром year с типом number", function () {
+    assert.ok(allVariables.classes["Car"]["year"]["types"].includes("number"));
   });
 });

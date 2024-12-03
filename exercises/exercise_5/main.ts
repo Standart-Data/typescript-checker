@@ -11,5 +11,9 @@ const [name, qty] = inventoryItem;
 const msg = addInventory(name, qty);
 
 function addInventory(name: string, quantity: number): string {
-    return `Added ${quantity} ${name}s to inventory.`;
+  return `Added ${quantity} ${name}s to inventory.`;
+}
+
+function add(a: number, b) {
+  return a + b;
 }
