@@ -15,6 +15,15 @@ type Person = {
   address: Address;
 };
 
+type User =
+  | {
+      name: string;
+      address: Address;
+    }
+  | string;
+
+type a = string;
+
 function showPersonDetails(person: Person): void {
   console.log(
     `${person.name} lives at ${person.address.street}, ${person.address.city}, ${person.address.zipcode}`
