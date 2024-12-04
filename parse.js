@@ -280,7 +280,7 @@ function readTsFiles(filePaths) {
       }
     }
 
-    console.log("Все найденные элементы:", allVariables.variables);
+    console.log("Все найденные элементы:", allVariables);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);
