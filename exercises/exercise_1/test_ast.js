@@ -15,12 +15,12 @@ describe("Переменная a:", function () {
 });
 
 describe("Переменная b:", function () {
-  it("В коде объявлена переменная a c типом any", function () {
-    assert.ok(allVariables.variables["a"]["types"].includes("any"));
+  it("В коде объявлена переменная a c типом string", function () {
+    assert.ok(allVariables.variables["b"]["types"].includes("string"));
   });
 
-  it("В коде объявлена переменная b c типом any", function () {
-    assert.ok(allVariables.variables["b"]["types"].includes("any"));
+  it("Переменная b имеет значение Its a string", function () {
+    assert.ok(allVariables.variables["b"]["value"] === "Its a string" );
   });
 });
 

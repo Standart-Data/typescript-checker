@@ -43,4 +43,20 @@ function runMochaTests(testPath) {
     });
 }
 
-module.exports = { runMochaTests };
+function showTestResults(results){
+
+    console.log("\n-------\n")
+
+    for (const test of results.tests) {
+        if (test.passed){
+            console.log(`✅ ${test.suite}: ${test.title}`)
+        } else {
+            console.log(`❌ ${test.suite}: ${test.title}`)
+        }
+    }
+
+    console.log("\n-------")
+
+}
+
+module.exports = { runMochaTests, showTestResults};

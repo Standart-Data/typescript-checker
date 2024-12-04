@@ -1,20 +1,4 @@
-const { runMochaTests } = require("../../runMocha.js");
-
-function showTestResults(results){
-
-  console.log("\n-------\n")
-
-  for (const test of results.tests) {
-    if (test.passed){
-      console.log(`✅ ${test.suite} ${test.title}`)
-    } else {
-      console.log(`❌ ${test.suite} ${test.title}`)
-    }
-  }
-
-  console.log("\n-------")
-
-}
+const { runMochaTests, showTestResults } = require("../../runMocha.js");
 
 runMochaTests("test_ast.js").then((results) => {
   showTestResults(results);

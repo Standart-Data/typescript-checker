@@ -1,5 +1,5 @@
 // Это пример файла, который тестируется
 
-const a = 5;
+const a: any = 5;
 
-let b = "It's string";
+let b: any = "Its a string";
