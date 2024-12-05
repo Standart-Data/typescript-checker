@@ -2,7 +2,7 @@ const express = require('express');
 const handlebars = require('express-handlebars');
 const cors = require('cors');
 
-const { parseTypeScriptString } = require('./parse');
+const { createTempFileWithContent, readTsFiles} = require('./parse');
 const { loadExercise } = require('./load')
 
 const app = express();
@@ -21,11 +21,8 @@ app.post('/parse', (req, res) => {
     const result = {};
 
     for (const [filename, filecontent] of Object.entries(files)) {
-        try {
-            result[filename] = parseTypeScriptString(filecontent);
-        } catch {
-            result[filename] = null
-        }
+        const tempFilePath = createTempFileWithContent(filecontent);
+        result[filename] = readTsFiles([tempFilePath])
     }
 
     res.setHeader('Content-Type', 'application/json')
@@ -33,18 +30,6 @@ app.post('/parse', (req, res) => {
 
 });
 
-app.get('/sample', (req, res)=> {
-
-    const tsContent = `
-    let a: number = 5;
-    let b: string = 'hello';
-    `;
-
-    const result = parseTypeScriptString(tsContent);
-    res.setHeader('Content-Type', 'application/json')
-    res.json(result);
-
-})
 
 app.get('/load/:taskID', async (req, res) => {
 

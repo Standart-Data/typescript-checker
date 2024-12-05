@@ -1,5 +1,9 @@
-// Это пример файла, который тестируется
+// Это пример упражнения
+// Задача: правильно проставить типы:
+// для а - number
+// для b - string
 
-const a: any = 5;
 
-let b: any = "Its a string";
+const a: string | number;
+
+let b: string = "Its a string";

@@ -8,11 +8,11 @@
 class Car {
   make: string;
   model: string;
-  year: number;
+  year: any;
 
-  constructor(make: string, model: string, year: number) {
-    this.make = make;
-    this.model = model;
-    this.year = year;
-  }
+  // constructor(make: string, model: string, year: any) {
+  //   this.make = make;
+  //   this.model = model;
+  //   this.year = year;
+  // }
 }
