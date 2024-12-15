@@ -17,24 +17,30 @@ class MochaRunner {
 
     constructor(code: string) {
 
+            // через сеттер
+
+        // Возможно тут удет выполняться код
+        this.scope = new Scope()
 
     }
 
     /**
      *  Добавляет в будущий контекст выполнения объект
-     * Например, typeScriptObects, DOM, editor.
+     *  Например, typeScriptObects, DOM, editor.
      */
-    mount(object: Object) {
+    mount(scopeObject: any) {
 
     }
 
     /**
-     *  Добавляет в будущий контекст выполнения объект
-     * Например, typeScriptObects, DOM, editor.
+     *  Запускает созданные тесты
+     *  И возвращает ответ в нашем классическом формате
      */
     run(fullTestAsString): TestResultArray {
 
-        // TBD
+        // Зпускает тесты который получены при инициализации с учетом того что добавлено через mount
+
+        return []
 
     }
 
