@@ -70,9 +70,11 @@ function readTsFiles(filePaths) {
         type.type = "object";
         type.properties = {};
         node.members.forEach((member) => {
-          const name = member.name.getText();
-          const memberType = member.type.getText().trim();
-          type.properties[name] = memberType;
+          const name = member.name ? member.name.getText() : undefined;
+          const memberType = member.type ? member.type.getText().trim() : undefined;
+          if (name && memberType) {
+            type.properties[name] = memberType;
+          }
         });
       } else if (ts.isUnionTypeNode(node)) {
         type.type = "combined";
@@ -227,7 +229,7 @@ function readTsFiles(filePaths) {
       }
     }
 
-    console.log("Все найденные элементы:", JSON.stringify(allVariables,null, 2));
+    console.log("Все найденные элементы:", allVariables);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);

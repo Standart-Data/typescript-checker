@@ -4,6 +4,6 @@
 // для b - string
 
 
-const a: string | number;
+const a: string | number = 5;
 
 let b: string = "Its a string";
