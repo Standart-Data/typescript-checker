@@ -85,6 +85,11 @@ function readTsFiles(filePaths) {
       return type;
     }
 
+    function getReturnTypeOfExpression(expression, checker) {
+      const type = checker.getTypeAtLocation(expression);
+      return checker.typeToString(type);
+    }
+
     function parseNode(node, checker) {
       switch (node.kind) {
         case ts.SyntaxKind.VariableStatement:
@@ -106,6 +111,22 @@ function readTsFiles(filePaths) {
                   };
                 });
               }
+            } else if (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer)) {
+              const name = declaration.name.getText();
+              const funcType = checker.getTypeAtLocation(declaration);
+              const returnType = checker.getReturnTypeOfSignature(
+                checker.getSignaturesOfType(funcType, ts.SignatureKind.Call)[0]
+              );
+              const returnTypeString = checker.typeToString(returnType);
+              const params = declaration.initializer.parameters.map(param => ({
+                name: param.name.getText(),
+                type: param.type ? param.type.getText() : 'any'
+              }));
+              allVariables.functions[name] = {
+                types: ["function"],
+                params,
+                returnResult: [returnTypeString],
+              };
             } else {
               const name = declaration.name.getText();
               let type = "any"; // Set default type to "any"
@@ -123,6 +144,12 @@ function readTsFiles(filePaths) {
                 allVariables.variables[name] = {
                   types: [type],
                   value: parseObject(declaration.initializer, checker),
+                };
+              } else if (initializer && ts.isCallExpression(declaration.initializer)) {
+                const returnTypeString = getReturnTypeOfExpression(declaration.initializer, checker);
+                allVariables.variables[name] = {
+                  types: [returnTypeString],
+                  value: initializer,
                 };
               } else {
                 allVariables.variables[name] = {
