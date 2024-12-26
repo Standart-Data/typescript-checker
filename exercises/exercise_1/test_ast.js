@@ -4,8 +4,8 @@ const assert = require("assert");
 const allVariables = readTsFiles(["./main.ts"]);
 
 describe("Переменная a:", function () {
-  it("Объявлена переменная a c типом number", function () {
-    assert.ok(allVariables.variables["a"]["types"].includes("number"));
+  it("Объявлена переменная a c типом string | number", function () {
+    assert.ok(allVariables.variables["a"]["types"].includes("string | number"));
   });
 
   it("Значение переменной а = 5", function () {

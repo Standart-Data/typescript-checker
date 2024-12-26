@@ -5,10 +5,10 @@ const allVariables = readTsFiles(["./main.ts"]);
 
 describe("First test", function () {
   it('В коде объявлен тип Direction cо значением "North" | "South" | "East" | "West"', function () {
+    const allTypes = allVariables.types["Direction"]["possibleTypes"].map((type) => type.value)
+
     assert.ok(
-      allVariables.types["Direction"].includes(
-        '"North" | "South" | "East" | "West"'
-      )
+      allTypes.includes('"North"') && allTypes.includes('"South"') && allTypes.includes('"East"') && allTypes.includes('"West"')
     );
   });
 

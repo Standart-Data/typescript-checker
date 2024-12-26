@@ -70,9 +70,11 @@ function readTsFiles(filePaths) {
         type.type = "object";
         type.properties = {};
         node.members.forEach((member) => {
-          const name = member.name.getText();
-          const memberType = member.type.getText().trim();
-          type.properties[name] = memberType;
+          const name = member.name ? member.name.getText() : undefined;
+          const memberType = member.type ? member.type.getText().trim() : undefined;
+          if (name && memberType) {
+            type.properties[name] = memberType;
+          }
         });
       } else if (ts.isUnionTypeNode(node)) {
         type.type = "combined";
@@ -81,6 +83,11 @@ function readTsFiles(filePaths) {
         type.value = node.getText().trim();
       }
       return type;
+    }
+
+    function getReturnTypeOfExpression(expression, checker) {
+      const type = checker.getTypeAtLocation(expression);
+      return checker.typeToString(type);
     }
 
     function parseNode(node, checker) {
@@ -104,6 +111,22 @@ function readTsFiles(filePaths) {
                   };
                 });
               }
+            } else if (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer)) {
+              const name = declaration.name.getText();
+              const funcType = checker.getTypeAtLocation(declaration);
+              const returnType = checker.getReturnTypeOfSignature(
+                checker.getSignaturesOfType(funcType, ts.SignatureKind.Call)[0]
+              );
+              const returnTypeString = checker.typeToString(returnType);
+              const params = declaration.initializer.parameters.map(param => ({
+                name: param.name.getText(),
+                type: param.type ? param.type.getText() : 'any'
+              }));
+              allVariables.functions[name] = {
+                types: ["function"],
+                params,
+                returnResult: [returnTypeString],
+              };
             } else {
               const name = declaration.name.getText();
               let type = "any"; // Set default type to "any"
@@ -121,6 +144,12 @@ function readTsFiles(filePaths) {
                 allVariables.variables[name] = {
                   types: [type],
                   value: parseObject(declaration.initializer, checker),
+                };
+              } else if (initializer && ts.isCallExpression(declaration.initializer)) {
+                const returnTypeString = getReturnTypeOfExpression(declaration.initializer, checker);
+                allVariables.variables[name] = {
+                  types: [returnTypeString],
+                  value: initializer,
                 };
               } else {
                 allVariables.variables[name] = {
@@ -227,7 +256,7 @@ function readTsFiles(filePaths) {
       }
     }
 
-    console.log("Все найденные элементы:", JSON.stringify(allVariables,null, 2));
+    console.log("Все найденные элементы:", allVariables);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);
