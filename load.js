@@ -1,6 +1,6 @@
 const http = require('http');
 
-TSBASEURL = "http://188.68.223.11/api/tstask/"
+TSBASEURL = "http://5.53.125.217/api/tstask/"
 
 async function loadExercise(taskID) {
 
@@ -9,9 +9,9 @@ async function loadExercise(taskID) {
     try {
 
         const response = await fetch(TSBASEURL+taskID);
-        // console.log(response)
+        console.log(response)
         const result = await response.json();
-        // console.log(result)
+        console.log(`Loaded data ${JSON.stringify(result)}`)
         return result
 
     } catch (error) {

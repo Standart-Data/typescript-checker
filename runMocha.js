@@ -40,7 +40,11 @@ function runMochaTests(testPath) {
                 }
             });
         });
+
+        return results;
+
     });
+
 }
 
 function showTestResults(results){
