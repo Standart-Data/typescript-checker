@@ -32,9 +32,9 @@
 
         </div>
 
-
         <div class="col-md-6">
-
+            <div id="test-results"></div>
+            <!-- /#test-results -->
         </div>
     </div>
 </div>
@@ -60,12 +60,30 @@
                 }
             });
 
-            alert(JSON.stringify(response.data));
+            console.log(JSON.stringify(response.data));
+            visualizeTestResults(response.data.tests);
 
         } catch (error) {
             alert("Error checking solution: " + error);
         }
     }
+
+
+    function visualizeTestResults(results) {
+
+        let html = "";
+        results.forEach(test => {
+            let icon = test.passed ? '✅' : '❌';
+            html += `<p>${icon}${test.title}</p>`;
+            if (!test.passed && test.err) {  // Check if there's an error object
+                html += `<pre>${test.err.message}</pre>`;
+            }
+        });
+        
+        // Assuming you have a dedicated element for showing results in your HTML
+        document.getElementById('test-results').innerHTML = html;
+    }
+
 
 
     var editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
