@@ -9,7 +9,7 @@ async function loadExercise(taskID) {
     try {
 
         const response = await fetch(TSBASEURL+taskID);
-        // console.log(response)
+        console.log(response)
         const result = await response.json();
         console.log(`Loaded data ${JSON.stringify(result)}`)
         return result
