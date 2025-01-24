@@ -214,9 +214,9 @@ function readTsFiles(filePaths) {
           node.members.forEach((member) => {
             let accessModifier = "opened"; // Default if no explicit modifier
 
-            // Проверяем, если поле имеет модификатор private, protected, readonly или начинается с _
+            // Проверяем модификаторы: private, protected, readonly, имя с _
             if (member.name && ts.isPrivateIdentifier(member.name)) {
-              accessModifier = "private"; // Handle fields like #id
+              accessModifier = "private";
             } else if (member.modifiers) {
               if (
                 member.modifiers.some(
@@ -239,10 +239,9 @@ function readTsFiles(filePaths) {
                 accessModifier = "readonly";
               }
             } else if (member.name && /^_/.test(member.name.getText())) {
-              accessModifier = "protected"; // Если имя начинается с _ и нет явного модификатора
+              accessModifier = "protected";
             }
 
-            // Извлекаем имя
             const cleanName =
               member.name?.getText()?.replace(/^[_#]/, "") || "unknown";
 
@@ -275,6 +274,23 @@ function readTsFiles(filePaths) {
                 params: methodParams,
                 returnResult: [returnTypeString],
                 modificator: accessModifier,
+              };
+            } else if (ts.isConstructorDeclaration(member)) {
+              // Обработка конструктора
+              const constructorParams = member.parameters.map((param) => {
+                const paramName = param.name.getText();
+                const paramType = param.type
+                  ? param.type.getText().trim()
+                  : "any";
+                const defaultValue = param.initializer
+                  ? param.initializer.getText().trim().replace(/['"]+/g, "")
+                  : null;
+
+                return { [paramName]: { types: [paramType], defaultValue } };
+              });
+
+              classMembers["constructor"] = {
+                params: constructorParams,
               };
             }
           });
