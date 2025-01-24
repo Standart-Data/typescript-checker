@@ -2,9 +2,25 @@ const { readTsFiles } = require("../../parse");
 const assert = require("assert");
 
 const allVariables = readTsFiles(["./main.ts"]);
+console.log(allVariables.classes["Window"])
+console.log(allVariables.classes["Icon"])
+describe("Access Modifiers Test", function () {
+  it("Класс Window имеет модификаторы доступа у свойств", function () {
+    assert.ok(allVariables.classes["Window"]);
+    const windowClass = allVariables.classes["Window"];
 
-describe("First test", function () {
-  it("В коде объявлен тип Moderator", function () {
-    assert.ok(allVariables.types["Moderator"]);
+    assert.strictEqual(windowClass["id"].modificator, "private");
+    assert.strictEqual(windowClass["name"].modificator, "protected");
+    assert.strictEqual(windowClass["length"].modificator, "opened");
+    assert.strictEqual(windowClass["access"].modificator, "readonly");
+  });
+
+  it("Класс Icon имеет модификаторы доступа у свойств", function () {
+    assert.ok(allVariables.classes["Icon"]);
+    const iconClass = allVariables.classes["Icon"];
+
+    assert.strictEqual(iconClass["id"].modificator, "private");
+    assert.strictEqual(iconClass["name"].modificator, "protected");
+    assert.strictEqual(iconClass["title"].modificator, "opened");
   });
 });
