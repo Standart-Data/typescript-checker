@@ -22,15 +22,23 @@ app.set('views', './views'); // Make sure this path is correct
 
 
 app.get('/:taskID', async (req, res) => {
-
-    const exerciseData = await loadExercise(req.params.taskID)
-    res.render('index', {layout : null, exercise: exerciseData}); // This will render views/index.handlebars
+    try {
+        const exerciseData = await loadExercise(req.params.taskID)
+        res.render('index', {layout: null, exercise: exerciseData}); // This will render views/index.handlebars
+    }  catch  (error) {
+        res.status(500).json({"error": "Cannot load exercise data. Please contact server administrator"})
+    }
 
 });
 
 app.get('/load/:taskID', async (req, res) => {
-    const data = await loadExercise(req.params.taskID)
-    res.json(data)
+    try {
+        const data = await loadExercise(req.params.taskID)
+        res.json(data)
+    } catch {
+        res.json({"error": "Cannot load exercise data. Please contact server administrator"})
+        res.status(500)
+    }
 })
 
 app.post('/parse', (req, res) => {
