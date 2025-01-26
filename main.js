@@ -20,6 +20,20 @@ app.set('view engine', 'handlebars');
 app.set('views', './views'); // Make sure this path is correct
 
 
+app.get('/test', (req, res) => {
+
+    const mock = {
+        id: 3,
+        title: "Шаг 3 – ипотечный калькулятор",
+        fields: [{"value": " const a: string | number = 5;\n let b: string = \"Its a string\"; "}],
+        text: "Создайте простой ипотечный калькулятор с использованием React. Этот калькулятор должен позволять пользователю вводить основную сумму кредита, процентную ставку и срок кредита, а затем вычислять и отображать ежемесячный платеж.",
+
+    }
+
+    res.render('index', {layout: null, exercise:  mock });
+
+})
+
 
 app.get('/:taskID', async (req, res) => {
     try {
