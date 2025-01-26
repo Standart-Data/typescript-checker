@@ -17,8 +17,12 @@
             
             <p>Level: {{exercise.level}}</p>
 
-            <div class="text  mt-3">
-                {{ exercise.text }}
+            <div class="text mt-3">
+                {{#if (contains exercise.text '<')}}
+                    {{{exercise.text}}}
+                {{else}}
+                    {{markdown exercise.text}}
+                {{/if}}
             </div>
 
             <div class="editor  mt-3">
