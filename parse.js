@@ -107,7 +107,7 @@ function readTsFiles(filePaths) {
                   const elementType = elementTypes[index];
                   allVariables.variables[elementName] = {
                     types: [elementType],
-                    from: declaration.initializer.getText().trim(), // Set the source of the value
+                    from: declaration.initializer.getText().trim(),
                   };
                 });
               }
@@ -127,14 +127,16 @@ function readTsFiles(filePaths) {
                   type: param.type ? param.type.getText() : "any",
                 })
               );
+              const body = declaration.initializer.body.getText(); // Добавляем тело функции
               allVariables.functions[name] = {
                 types: ["function"],
                 params,
                 returnResult: [returnTypeString],
+                body, // Сохраняем тело функции
               };
             } else {
               const name = declaration.name.getText();
-              let type = "any"; // Set default type to "any"
+              let type = "any";
               if (declaration.type) {
                 type = declaration.type.getText().trim();
               }
@@ -192,10 +194,12 @@ function readTsFiles(filePaths) {
             .getCallSignatures()[0]
             .getReturnType();
           const returnTypeString = checker.typeToString(returnType);
+          const body = node.body?.getText(); // Добавляем тело функции
           allVariables.functions[functionName] = {
             types: ["function"],
             params,
             returnResult: [returnTypeString],
+            body, // Сохраняем тело функции
           };
           break;
         case ts.SyntaxKind.TypeAliasDeclaration:
@@ -212,7 +216,6 @@ function readTsFiles(filePaths) {
           const className = node.name.getText();
           const classMembers = {};
 
-          // Проверяем, есть ли наследование
           const extendsClause = node.heritageClauses?.find(
             (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
           );
@@ -221,9 +224,8 @@ function readTsFiles(filePaths) {
             : [];
 
           node.members.forEach((member) => {
-            let accessModifier = "opened"; // Default if no explicit modifier
+            let accessModifier = "opened";
 
-            // Проверяем модификаторы: private, protected, readonly, имя с _
             if (member.name && ts.isPrivateIdentifier(member.name)) {
               accessModifier = "private";
             } else if (member.modifiers) {
@@ -278,14 +280,15 @@ function readTsFiles(filePaths) {
                 .getCallSignatures()[0]
                 .getReturnType();
               const returnTypeString = checker.typeToString(returnType);
+              const body = member.body?.getText(); // Добавляем тело метода
               classMembers[methodName] = {
                 types: ["function"],
                 params: methodParams,
                 returnResult: [returnTypeString],
                 modificator: accessModifier,
+                body, // Сохраняем тело метода
               };
             } else if (ts.isConstructorDeclaration(member)) {
-              // Обработка конструктора
               const constructorParams = member.parameters.map((param) => {
                 const paramName = param.name.getText();
                 const paramType = param.type
@@ -306,7 +309,7 @@ function readTsFiles(filePaths) {
 
           allVariables.classes[className] = {
             ...classMembers,
-            extends: extendedClasses, // Добавляем поле extends с массивом классов
+            extends: extendedClasses,
           };
           break;
         default:
