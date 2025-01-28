@@ -3,42 +3,58 @@
 <head>
     <title>My Web App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/material-darker.min.css">
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="/app.css">
 </head>
-<body class="bg-[#e6e6fa] h-full">
+<body class="bg-[#A8B2CA] h-full">
 
-<div class="grid grid-cols-3 h-full w-full bg-[#e6e6fa]">
+<div class="m-2 grid grid-cols-3 h-full w-full">
 
-        <div class="m-4 p-4 h-full bg-white rounded-xl">
+        <main class="m-2 h-full bg-white rounded-xl overflow-hidden">
 
-            <h2 class="text-2xl">
-                {{exercise.title}}
-            </h2>
+            <section class="grid  grid-cols-2 p-4 bg-[#EFEFEF] text-[#777]">
+                <div class="text-left" >Задание</div>
+                <div class="text-right">Cложность</div>
+            </section>
 
-            <p>Level: {{exercise.level}}</p>
+            <section class="p-4 bg-[#3CC39E] text-white ">
 
-            <div class="text mt-3">
-                 {{{exercise.text}}}
-            </div>
+                Задание выполнено! Код подтверждения: IDDQD
 
-            <div class="controls mt-3">
-                <button id="logButton" class="bg-green-500 text-white px-4 py-2 rounded-lg cursor-pointer">Проверить</button>
-            </div>
+            </section>
 
-            <div id="test-results"></div>
-            <!-- /#test-results -->
+            <section  class="bg-grey p-4">
 
-        </div>
+                <h2 class="text-2xl">
+                    {{exercise.title}}
+                </h2>
+
+                <p>Level: {{exercise.level}}</p>
+
+                <div class="text mt-3">
+                    {{{exercise.text}}}
+                </div>
+
+                <div class="controls mt-3">
+                    <button id="logButton" class="bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer">Проверить</button>
+                </div>
+
+                <div id="test-results"></div>
+                <!-- /#test-results -->
+
+            </section>
 
 
-        <div class="m-4 h-full bg-white bg-white rounded-xl">
+        </main>
+
+
+        <div class="m-2 h-full bg-[#212121] rounded-xl">
 
             <div class="tabs">
                 main.ts
             </div>
             <!-- /.tabs -->
-
 
             <div class="editor">
                 <textarea id="editor">{{exercise.fields.0.value}}</textarea>
@@ -47,11 +63,10 @@
 
         </div>
 
-        <div class="m-4 p-4 h-full bg-white bg-white rounded-xl">
+        <div class="m-2 p-4 h-full bg-white bg-white rounded-xl">
 
         </div>
-        
-    
+
 </div>
 
 
@@ -87,8 +102,8 @@
 
         let html = "";
         results.forEach(test => {
-            let icon = test.passed ? '✅' : '❌';
-            html += `<p>${icon}${test.title}</p>`;
+            let icon = test.passed ? '✅ ' : '❌ ';
+            html += `<p >${icon}${test.title}</p>`;
             if (!test.passed && test.err) {  // Check if there's an error object
                 html += `<pre>${test.err.message}</pre>`;
             }
@@ -102,10 +117,14 @@
     var editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
         lineNumbers: true,
         matchBrackets: true,
+        theme: "material-darker",
         mode: "javascript" // Or "typescript" if you have the relevant files locally
     });
 
     document.getElementById('logButton').addEventListener('click', checkSolution);
+
+    checkSolution();
+
 </script>
 
 </body>

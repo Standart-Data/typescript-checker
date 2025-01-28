@@ -114,7 +114,6 @@ app.post('/check/:taskID', async (req, res) => {
     }
 
 
-
     try {
         const exerciseData = await loadExercise(taskId) // Загружаем данные упражнения, но mainContent не берем
         const tempFilePath = createTempFileWithContent(mainContent);
