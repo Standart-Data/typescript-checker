@@ -2,76 +2,56 @@ const { readTsFiles } = require("../../parse");
 const assert = require("assert");
 
 const allVariables = readTsFiles(["./main.ts"]);
-console.log(allVariables.types["Greeting"])
-console.log(allVariables.functions)
+
 describe("Function Type Parsing Tests", function () {
-  it("Тип Greeting корректно обрабатывается", function () {
-    assert.ok(allVariables.types["Greeting"], "Тип Greeting не найден");
+  describe("Greeting Type", function () {
+    it("Тип Greeting должен быть корректно обработан", function () {
+      const greetingType = allVariables.types["Greeting"];
+      assert.ok(greetingType, "Тип Greeting не найден");
 
-    const greetingType = allVariables.types["Greeting"];
+      // Проверка, что это функциональный тип
+      assert.strictEqual(greetingType.type, "function", "Greeting должен быть функциональным типом");
 
-    // Проверяем, что это функциональный тип
-    assert.strictEqual(greetingType.type, "function", "Greeting должен быть функциональным типом");
+      // Проверка параметров функции
+      assert.strictEqual(greetingType.params.length, 1, "Greeting должен иметь один параметр");
+      const param = greetingType.params[0];
+      assert.strictEqual(param.name, "name", "Параметр должен называться name");
+      assert.strictEqual(param.type, "string", "Тип параметра должен быть string");
+      assert.strictEqual(param.optional, true, "Параметр name должен быть опциональным");
 
-    // Проверяем параметры функции
-    assert.strictEqual(greetingType.params.length, 1, "Greeting должен иметь один параметр");
-    const param = greetingType.params[0];
-    assert.strictEqual(param.name, "name", "Параметр должен называться name");
-    assert.deepStrictEqual(param.types, ["string"], "Тип параметра должен быть string");
-    assert.strictEqual(param.optional, true, "Параметр name должен быть опциональным");
+      // Проверка возвращаемого типа
+      assert.strictEqual(greetingType.returnType, "string", "Greeting должен возвращать строку");
 
-    // Проверяем возвращаемый тип
-    assert.strictEqual(
-      greetingType.returnType,
-      "string",
-      "Greeting должен возвращать строку"
-    );
-
-    // Проверяем свойства типа Greeting
-    assert.ok(greetingType.properties, "Greeting должен иметь свойства");
-    assert.strictEqual(
-      greetingType.properties.defaultName.types[0],
-      "string",
-      "Свойство defaultName должно быть строкой"
-    );
-    assert.strictEqual(
-      greetingType.properties.setDefaultName.types[0],
-      "(newName: string) => void",
-      "Свойство setDefaultName должно быть функцией с параметром newName"
-    );
+      // Проверка свойств типа Greeting
+      assert.ok(greetingType.properties, "Greeting должен иметь свойства");
+      assert.strictEqual(
+        greetingType.properties.defaultName,
+        "string",
+        "Свойство defaultName должно быть строкой"
+      );
+      assert.strictEqual(
+        greetingType.properties.setDefaultName,
+        "(newName: string) => void",
+        "Свойство setDefaultName должно быть функцией с параметром newName"
+      );
+    });
   });
 
-  it("Переменная someFunc соответствует типу Greeting", function () {
-    assert.ok(allVariables.variables["someFunc"], "Переменная someFunc не найдена");
+  describe("someFunc Variable", function () {
+    it("Переменная someFunc должна соответствовать типу Greeting", function () {
+      const someFunc = allVariables.functions["someFunc"];
+      assert.ok(someFunc, "Переменная someFunc не найдена");
 
-    const someFunc = allVariables.variables["someFunc"];
+      // Проверка типа переменной
+      assert.strictEqual(someFunc.types[0], "Greeting", "someFunc должен быть типа Greeting");
 
-    // Проверяем тип переменной
-    assert.strictEqual(
-      someFunc.types[0],
-      "Greeting",
-      "someFunc должен быть типа Greeting"
-    );
+      // Проверка свойств someFunc
+      assert.ok(someFunc.defaultName.value, "someFunc должен иметь свойство defaultName");
+      assert.strictEqual(someFunc.defaultName.value, "Func", "Свойство defaultName должно быть равно 'Func'");
 
-    // Проверяем свойства someFunc
-    assert.ok(
-      someFunc.value.defaultName,
-      "someFunc должен иметь свойство defaultName"
-    );
-    assert.strictEqual(
-      someFunc.value.defaultName,
-      "Func",
-      "Свойство defaultName должно быть равно 'Func'"
-    );
-
-    assert.ok(
-      someFunc.value.setDefaultName,
-      "someFunc должен иметь метод setDefaultName"
-    );
-    assert.strictEqual(
-      typeof someFunc.value.setDefaultName,
-      "function",
-      "setDefaultName должен быть функцией"
-    );
+      assert.ok(someFunc.setDefaultName.value, "someFunc должен иметь метод setDefaultName");
+      assert.strictEqual(someFunc.setDefaultName.value, "(anotherName) => {}", "setDefaultName должно быть равно (anotherName) => {}");
+      assert.strictEqual(typeof someFunc.setDefaultName.types[0], "(anotherName: string) => void", "setDefaultName type должно быть равно function");
+    });
   });
 });

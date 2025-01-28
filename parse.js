@@ -65,20 +65,55 @@ function readTsFiles(filePaths) {
     function parseType(node) {
       const type = { type: "simple" };
       if (ts.isTypeLiteralNode(node)) {
-        type.type = "object";
-        type.properties = {};
-        node.members.forEach((member) => {
-          const name = member.name ? member.name.getText() : undefined;
-          const memberType = member.type
-            ? member.type.getText().trim()
-            : undefined;
-          if (name && memberType) {
-            type.properties[name] = memberType;
-          }
-        });
+        // Проверяем наличие сигнатуры вызова функции
+        const callSignature = node.members.find((m) =>
+          ts.isCallSignatureDeclaration(m)
+        );
+
+        if (callSignature) {
+          // Обрабатываем как функциональный тип
+          type.type = "function";
+          type.params = callSignature.parameters.map((param) => ({
+            name: param.name?.getText() || "unnamed",
+            type: param.type?.getText().trim() || "any",
+            optional: !!param.questionToken,
+          }));
+
+          type.returnType = callSignature.type?.getText().trim() || "void";
+
+          // Добавляем остальные свойства объекта как дополнительные поля
+          type.properties = {};
+          node.members.forEach((member) => {
+            if (!ts.isCallSignatureDeclaration(member) && member.name) {
+              const name = member.name.getText();
+              const memberType = member.type?.getText().trim() || "any";
+              type.properties[name] = memberType;
+            }
+          });
+        } else {
+          // Обычный объект
+          type.type = "object";
+          type.properties = {};
+          node.members.forEach((member) => {
+            const name = member.name?.getText();
+            const memberType = member.type?.getText().trim();
+            if (name && memberType) {
+              type.properties[name] = memberType;
+            }
+          });
+        }
       } else if (ts.isUnionTypeNode(node)) {
         type.type = "combined";
         type.possibleTypes = node.types.map((t) => parseType(t));
+      } else if (ts.isFunctionTypeNode(node)) {
+        // Обработка FunctionTypeNode для стрелочных функций
+        type.type = "function";
+        type.params = node.parameters.map((param) => ({
+          name: param.name.getText(),
+          type: param.type ? param.type.getText().trim() : "any",
+          optional: !!param.questionToken, // Добавляем флаг optional
+        }));
+        type.returnType = node.type?.getText().trim() || "void";
       } else {
         type.value = node.getText().trim();
       }
@@ -95,6 +130,7 @@ function readTsFiles(filePaths) {
         case ts.SyntaxKind.VariableStatement:
           node.declarationList.declarations.forEach((declaration) => {
             if (ts.isArrayBindingPattern(declaration.name)) {
+              // Обработка деструктуризации массивов
               if (
                 declaration.type &&
                 declaration.type.kind === ts.SyntaxKind.TupleType
@@ -111,43 +147,54 @@ function readTsFiles(filePaths) {
                   };
                 });
               }
-            } else if (
-              ts.isArrowFunction(declaration.initializer) ||
-              ts.isFunctionExpression(declaration.initializer)
-            ) {
-              const name = declaration.name.getText();
-              const funcType = checker.getTypeAtLocation(declaration);
-              const returnType = checker.getReturnTypeOfSignature(
-                checker.getSignaturesOfType(funcType, ts.SignatureKind.Call)[0]
-              );
-              const returnTypeString = checker.typeToString(returnType);
-              const params = declaration.initializer.parameters.map(
-                (param) => ({
-                  name: param.name.getText(),
-                  type: param.type ? param.type.getText() : "any",
-                })
-              );
-              const body = declaration.initializer.body.getText(); // Добавляем тело функции
-              allVariables.functions[name] = {
-                types: ["function"],
-                params,
-                returnResult: [returnTypeString],
-                body, // Сохраняем тело функции
-              };
             } else {
               const name = declaration.name.getText();
               let type = "any";
+
+              // Если у переменной указан тип, используем его
               if (declaration.type) {
-                type = declaration.type.getText().trim();
+                type = checker.typeToString(
+                  checker.getTypeAtLocation(declaration.type)
+                );
               }
+
               const initializer = declaration.initializer
                 ? declaration.initializer.getText().trim().replace(/['"]+/g, "")
                 : null;
 
+              // Если переменная является функцией
               if (
+                ts.isArrowFunction(declaration.initializer) ||
+                ts.isFunctionExpression(declaration.initializer)
+              ) {
+                const funcType = checker.getTypeAtLocation(declaration);
+                const returnType = checker.getReturnTypeOfSignature(
+                  checker.getSignaturesOfType(
+                    funcType,
+                    ts.SignatureKind.Call
+                  )[0]
+                );
+                const returnTypeString = checker.typeToString(returnType);
+                const params = declaration.initializer.parameters.map(
+                  (param) => ({
+                    name: param.name.getText(),
+                    type: param.type ? param.type.getText() : "any",
+                  })
+                );
+                const body = declaration.initializer.body.getText();
+
+                // Сохраняем переменную как функцию
+                allVariables.functions[name] = {
+                  types: [type], // Используем тип из объявления (Greeting)
+                  params,
+                  returnResult: [returnTypeString],
+                  body,
+                };
+              } else if (
                 initializer &&
                 ts.isObjectLiteralExpression(declaration.initializer)
               ) {
+                // Если переменная инициализирована объектом
                 allVariables.variables[name] = {
                   types: [type],
                   value: parseObject(declaration.initializer, checker),
@@ -156,6 +203,7 @@ function readTsFiles(filePaths) {
                 initializer &&
                 ts.isCallExpression(declaration.initializer)
               ) {
+                // Если переменная инициализирована вызовом функции
                 const returnTypeString = getReturnTypeOfExpression(
                   declaration.initializer,
                   checker
@@ -165,6 +213,7 @@ function readTsFiles(filePaths) {
                   value: initializer,
                 };
               } else {
+                // Обычная переменная
                 allVariables.variables[name] = {
                   types: [type],
                   value: initializer,
@@ -188,6 +237,7 @@ function readTsFiles(filePaths) {
           const params = node.parameters.map((param) => ({
             name: param.name.getText(),
             type: param.type ? param.type.getText().trim() : "any",
+            optional: !!param.questionToken, // Добавляем флаг optional
           }));
           const returnType = checker
             .getTypeAtLocation(node)
@@ -311,6 +361,33 @@ function readTsFiles(filePaths) {
             ...classMembers,
             extends: extendedClasses,
           };
+          break;
+        case ts.SyntaxKind.ExpressionStatement:
+          if (ts.isBinaryExpression(node.expression)) {
+            const expr = node.expression;
+            if (expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+              if (ts.isPropertyAccessExpression(expr.left)) {
+                const objectName = expr.left.expression.getText();
+                const propertyName = expr.left.name.getText();
+
+                // Ищем существующую переменную/функцию
+                const target =
+                  allVariables.variables[objectName] ||
+                  allVariables.functions[objectName];
+
+                if (target) {
+                  target[propertyName] = {
+                    value: expr.right.getText().replace(/['"]+/g, ""),
+                    types: [
+                      checker.typeToString(
+                        checker.getTypeAtLocation(expr.right)
+                      ),
+                    ],
+                  };
+                }
+              }
+            }
+          }
           break;
         default:
           break;
