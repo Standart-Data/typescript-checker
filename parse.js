@@ -14,11 +14,9 @@ function createTempFileWithContent(content) {
 }
 
 function parseTypeScriptString(tsString) {
-
   const tempFilename = createTempFileWithContent(tsString);
 
-  return tempFilename
-
+  return tempFilename;
 }
 
 function readTsFiles(filePaths) {
@@ -71,7 +69,9 @@ function readTsFiles(filePaths) {
         type.properties = {};
         node.members.forEach((member) => {
           const name = member.name ? member.name.getText() : undefined;
-          const memberType = member.type ? member.type.getText().trim() : undefined;
+          const memberType = member.type
+            ? member.type.getText().trim()
+            : undefined;
           if (name && memberType) {
             type.properties[name] = memberType;
           }
@@ -111,17 +111,22 @@ function readTsFiles(filePaths) {
                   };
                 });
               }
-            } else if (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer)) {
+            } else if (
+              ts.isArrowFunction(declaration.initializer) ||
+              ts.isFunctionExpression(declaration.initializer)
+            ) {
               const name = declaration.name.getText();
               const funcType = checker.getTypeAtLocation(declaration);
               const returnType = checker.getReturnTypeOfSignature(
                 checker.getSignaturesOfType(funcType, ts.SignatureKind.Call)[0]
               );
               const returnTypeString = checker.typeToString(returnType);
-              const params = declaration.initializer.parameters.map(param => ({
-                name: param.name.getText(),
-                type: param.type ? param.type.getText() : 'any'
-              }));
+              const params = declaration.initializer.parameters.map(
+                (param) => ({
+                  name: param.name.getText(),
+                  type: param.type ? param.type.getText() : "any",
+                })
+              );
               allVariables.functions[name] = {
                 types: ["function"],
                 params,
@@ -145,8 +150,14 @@ function readTsFiles(filePaths) {
                   types: [type],
                   value: parseObject(declaration.initializer, checker),
                 };
-              } else if (initializer && ts.isCallExpression(declaration.initializer)) {
-                const returnTypeString = getReturnTypeOfExpression(declaration.initializer, checker);
+              } else if (
+                initializer &&
+                ts.isCallExpression(declaration.initializer)
+              ) {
+                const returnTypeString = getReturnTypeOfExpression(
+                  declaration.initializer,
+                  checker
+                );
                 allVariables.variables[name] = {
                   types: [returnTypeString],
                   value: initializer,
@@ -201,11 +212,57 @@ function readTsFiles(filePaths) {
           const className = node.name.getText();
           const classMembers = {};
           node.members.forEach((member) => {
-            if (ts.isMethodDeclaration(member)) {
-              const methodName = member.name.getText();
+            let accessModifier = "opened"; // Default if no explicit modifier
+
+            // Проверяем модификаторы: private, protected, readonly, имя с _
+            if (member.name && ts.isPrivateIdentifier(member.name)) {
+              accessModifier = "private";
+            } else if (member.modifiers) {
+              if (
+                member.modifiers.some(
+                  (mod) => mod.kind === ts.SyntaxKind.PrivateKeyword
+                )
+              ) {
+                accessModifier = "private";
+              } else if (
+                member.modifiers.some(
+                  (mod) => mod.kind === ts.SyntaxKind.ProtectedKeyword
+                )
+              ) {
+                accessModifier = "protected";
+              }
+              if (
+                member.modifiers.some(
+                  (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword
+                )
+              ) {
+                accessModifier = "readonly";
+              }
+            } else if (member.name && /^_/.test(member.name.getText())) {
+              accessModifier = "protected";
+            }
+
+            const cleanName =
+              member.name?.getText()?.replace(/^[_#]/, "") || "unknown";
+
+            if (ts.isPropertyDeclaration(member)) {
+              const propertyName = cleanName;
+              const propertyType = member.type
+                ? member.type.getText().trim()
+                : "unknown";
+              const initializer = member.initializer
+                ? member.initializer.getText().trim().replace(/['"]+/g, "")
+                : null;
+              classMembers[propertyName] = {
+                types: [propertyType],
+                value: initializer,
+                modificator: accessModifier,
+              };
+            } else if (ts.isMethodDeclaration(member)) {
+              const methodName = cleanName;
               const methodParams = member.parameters.map((param) => ({
                 name: param.name.getText(),
-                type: param.type ? param.type.getText().trim() : "any", // Set default type to "any"
+                type: param.type ? param.type.getText().trim() : "any",
               }));
               const returnType = checker
                 .getTypeAtLocation(member)
@@ -216,31 +273,31 @@ function readTsFiles(filePaths) {
                 types: ["function"],
                 params: methodParams,
                 returnResult: [returnTypeString],
+                modificator: accessModifier,
               };
             } else if (ts.isConstructorDeclaration(member)) {
-              member.parameters.forEach((param) => {
+              // Обработка конструктора
+              const constructorParams = member.parameters.map((param) => {
                 const paramName = param.name.getText();
                 const paramType = param.type
                   ? param.type.getText().trim()
-                  : "any"; // Set default type to "any"
-                classMembers[paramName] = { types: [paramType], value: null };
+                  : "any";
+                const defaultValue = param.initializer
+                  ? param.initializer.getText().trim().replace(/['"]+/g, "")
+                  : null;
+
+                return { [paramName]: { types: [paramType], defaultValue } };
               });
-            } else if (ts.isPropertyDeclaration(member)) {
-              const propertyName = member.name.getText();
-              const propertyType = member.type
-                ? member.type.getText().trim()
-                : "unknown";
-              const initializer = member.initializer
-                ? member.initializer.getText().trim().replace(/['"]+/g, "")
-                : null;
-              classMembers[propertyName] = {
-                types: [propertyType],
-                value: initializer,
+
+              classMembers["constructor"] = {
+                params: constructorParams,
               };
             }
           });
+
           allVariables.classes[className] = classMembers;
           break;
+
         default:
           break;
       }
