@@ -211,6 +211,15 @@ function readTsFiles(filePaths) {
         case ts.SyntaxKind.ClassDeclaration:
           const className = node.name.getText();
           const classMembers = {};
+
+          // Проверяем, есть ли наследование
+          const extendsClause = node.heritageClauses?.find(
+            (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+          );
+          const extendedClasses = extendsClause
+            ? extendsClause.types.map((type) => type.getText())
+            : [];
+
           node.members.forEach((member) => {
             let accessModifier = "opened"; // Default if no explicit modifier
 
@@ -295,9 +304,11 @@ function readTsFiles(filePaths) {
             }
           });
 
-          allVariables.classes[className] = classMembers;
+          allVariables.classes[className] = {
+            ...classMembers,
+            extends: extendedClasses, // Добавляем поле extends с массивом классов
+          };
           break;
-
         default:
           break;
       }

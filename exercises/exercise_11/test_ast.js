@@ -2,8 +2,7 @@ const { readTsFiles } = require("../../parse");
 const assert = require("assert");
 
 const allVariables = readTsFiles(["./main.ts"]);
-console.log(allVariables.classes["Window"])
-console.log(allVariables.classes["Icon"])
+
 describe("Access Modifiers Test", function () {
   it("Класс Window имеет модификаторы доступа у свойств", function () {
     assert.ok(allVariables.classes["Window"]);
