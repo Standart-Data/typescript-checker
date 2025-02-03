@@ -233,7 +233,6 @@ function readTsFiles(filePaths) {
           allVariables.interfaces[interfaceName] = { properties };
           break;
         case ts.SyntaxKind.FunctionDeclaration:
-          console.log(node)
           const functionName = node.name.getText();
           const params = node.parameters.map((param) => ({
             name: param.name.getText(),
@@ -246,8 +245,14 @@ function readTsFiles(filePaths) {
             .getReturnType();
           const returnTypeString = checker.typeToString(returnType);
           const body = node.body?.getText(); // Добавляем тело функции
+          const genericsTypes = node.typeParameters?.reduce(
+            (acc, el) => [...acc, el.getText()],
+            []
+          );
+
           allVariables.functions[functionName] = {
             types: ["function"],
+            genericsTypes,
             params,
             returnResult: [returnTypeString],
             body, // Сохраняем тело функции
