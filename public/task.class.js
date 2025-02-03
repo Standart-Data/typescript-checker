@@ -1,4 +1,4 @@
-BASE_URL = `http://localhost:10000`
+BASE_URL = ``
 
 class TaskState {
 
@@ -17,7 +17,7 @@ class Task {
 
     constructor(id) {
         this.id = id
-        this.data = null
+        this.data = {}
         this.errors = []
         this.output = {}
         this.testResults = null
@@ -98,5 +98,26 @@ class Task {
 
         return this.errors
     }
+
+    async parseUserCode(solution){
+
+        const response = await fetch(`${BASE_URL}/parse`, {
+            method: "POST",
+            body: JSON.stringify({"main.ts": solution}),
+            headers: { "Content-type": "application/json"  }
+        });
+
+        if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
+
+        const allVariables = await response.json();
+
+        console.log("allVariables")
+        console.log(allVariables)
+
+        return allVariables
+
+
+    }
+
 
 }

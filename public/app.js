@@ -7,11 +7,11 @@ class App {
         this.task = new Task(taskID)
         this.components = {
 
-            console: new Component("#theConsole", "console", {records: []}),
             exercise: new Component("#theExercise", "exercise", {exercise: {title: "Загружаем задание"}}),
-            output: new Component("#theOutput", "output", {code: "// запустите, чтобы посмотреть"}),
-            testResults: new Component("theTestResults", "testResults", {"tests": []})
+            output: new Component("#theOutput", "output", {code: "// запустите, чтобы посмотреть", records: []}),
+            testResults: new Component("#theTestResults", "testResults", {"tests": []}),
 
+            editor: new Component("#theEditor", "editor", {"fields": {}}),
 
         }
     }
@@ -21,38 +21,63 @@ class App {
         return this
     }
 
-    show(){
+    async show(){
 
-        console.log(this.task.data)
 
-        this.components.exercise.update({"exercise": this.task.data})
-        this.components.console.update({"records": [1,2,3,4,5]})
         this.components.output.update({"code": "// запустите, чтобы посмотреть"})
+        this.components.exercise.update({"exercise": this.task.data})
+
+        this.components.editor.update({"fields": this.task.fields})
+        this.highlightEditor()
+
+        await this.check()
 
     }
 
-    run() {
+    highlightEditor(){
+
+        const ideNode = this.components.editor.container.querySelector("textarea")
+
+        this.components.editor.refs["ide"] = CodeMirror.fromTextArea(ideNode, {
+            lineNumbers: true,
+            matchBrackets: true,
+            mode: "javascript", // Or "typescript" if you have the relevant files locally
+            theme: "material-darker"
+        })
+    }
+
+    getEditorValues(){
+
+        const ideNode =  this.components.editor.refs["ide"]
+        return ideNode.getValue()
+    }
+
+    async run() {
 
         console.log("Запускаем выполнение упражнения")
 
-        this.task.validate("const x: string = '1';").then(response =>
-            this.components.console.update({records: this.task.errors})
-        )
+        const editorValue = this.getEditorValues()
+        const errors = await this.task.validate(editorValue)
+        const response = await this.task.process(editorValue)
 
-        this.task.process("const x: string = '1';").then(response =>
-            this.components.output.update({"code": response["main.js"]})
-        )
+        this.components.output.update({"code": response["main.js"], errors: errors})
 
     }
 
-    check() {
+    async parse(){
+
+        const editorValue = this.getEditorValues()
+        const allVariables = await this.task.parseUserCode(editorValue)
+        return allVariables
+
+    }
+
+    async check() {
 
         const tests = this.task.tests
+        const allVariables = await this.parse()
+        const result = await this.testRunner.run(tests, allVariables)
+        this.components.testResults.update({tests: result.tests})
 
-        this.testRunner.run(tests).then(result => {
-            // this.components.testResults.update({"tests": result})
-            console.log(`Получен результат выполнения тестов` )
-            console.log( result )
-        })
     }
 }

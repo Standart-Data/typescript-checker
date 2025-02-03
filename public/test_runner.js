@@ -3,28 +3,39 @@
 
 class TestRunner {
 
-
     constructor() {
         this.dom = {};
         this.errors = []
         this.editor = {}
+
+        this.mocha = mocha
+        this.mocha.setup({ui:'bdd', cleanReferencesAfterRun: false });
+        this.mocha.reporter('Silent');
     }
 
-    async run(testString) {
+    /* Запускает тесты, докидывая в область видимости:
+    * – все переменные тайпскрипта
+    * – поля редактора
+    * – DOM превьюшки
+    * */
 
-        mocha.setup('bdd');
-        mocha.reporter('Silent');
-        const results = { tests: [] };
+    async run(testString, allVariables) {
+
+        const results = {};
+        results.tests = []
+
         const expect = window.chai.expect;
+        const assert = window.chai.assert;
 
-        const testFunction = new Function("expect", testString);
-        testFunction(expect);
+        this.mocha.suite.suites = []; // Clear all suites
+        this.mocha.suite.tests = [];  //Clear all tests
+
+        const testFunction = new Function("allVariables", "expect", "assert",  testString);
+        testFunction(allVariables["main.ts"], expect, assert);
 
         return new Promise((resolve, reject) => { // Return a Promise
-        mocha.run()
-        .on('test', (test) => {
+        this.mocha.run()
 
-    })
         .on('pass', (test) => {
             results.tests.push({
                 title: test.title,
@@ -52,11 +63,4 @@ class TestRunner {
     });
 }
 
-
 }
-
-
-
-
-
-

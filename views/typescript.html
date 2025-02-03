@@ -4,6 +4,8 @@
     <title>My Web App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/material-darker.min.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
     <script src="https://cdn.jsdelivr.net/npm/typescript@5.4.2/lib/typescript.js"></script>
 
     <script src="https://unpkg.com/chai@4.5.0/chai.js"></script>
@@ -37,45 +39,37 @@
 
     <div class="m-2 h-full bg-[#212121] rounded-xl">
 
-        <section id="theEditor">
-
-            <div class="tabs">
-                main.ts
-            </div>
-            <!-- /.tabs -->
-
-            <div class="editor">
-                <textarea id="editor">{{exercise.fields.0.value}}</textarea>
-            </div>
-
-        </section>
+        <section id="theEditor"> </section>
 
     </div>
 
-    <div class="m-2 p-4 h-full bg-white bg-white rounded-xl">
+    <div class="grid grid-rows-2 gap-4 pr-4 ">
 
+        <div class="m-2 h-full bg-white bg-white rounded-xl overflow-hidden">
 
-        <section id="theConsole" >
+            <section class="grid p-4 bg-[#EFEFEF] text-[#777]">
+                <p class="">Результат и ошибки</p>
+            </section>
 
-            загружаем консоль
+            <section id="theOutput" class="p-4"> </section>
+            <section id="theConsole" class="p-4">  </section>
 
-        </section>
+        </div>
 
-        <section id="theOutput">
+        <div class="m-2 h-full bg-white rounded-xl overflow-hidden">
 
+            <section class="grid p-4 bg-[#EFEFEF] text-[#777]">
+                <p class="">Задания (Выполнено 0 из 0)</p>
+            </section>
 
+            <section id="theTestResults" class="p-4">
 
-        </section>
+            </section>
 
-        <section id="theTestResults">
-
-
-
-        </section>
+        </div>
 
     </div>
 </div>
-
 
 
 
@@ -89,42 +83,55 @@
         {{exercise.title}}
     </h2>
 
-    <p>Level: {{exercise.level}}</p>
-
     <!-- Текст упражнения -->
 
     <div class="text mt-3">
         {{{ exercise.text }}}
     </div>
 
-    <!-- Кнопка проверки-->
-
+    <!-- Кнопки проверки-->
     <div class="controls mt-3">
         <button onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer" > Запустить </button>
         <button onclick="app.check()" class="bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" > Проверить </button>
     </div>
 
-    <div id="test-results"></div>
-
-</template>
-
-<template id="console">
-    <h2>Ошибки</h2>
-    {{#each records}}
-    <li>{{this.message}}</li>
-    {{/each}}
 </template>
 
 <template id="output">
-    <h2>Результат</h2>
-    {{code}}
+
+    {{#if errors}}
+        <h2>Ошибки валидации:</h2>
+        {{#each errors}}
+        <p>🚨{{this.message}}</p>
+        {{/each}}
+    {{else}}
+        <pre>{{code}}</pre>
+    {{/if}}
+
 </template>
 
+
+<template id="editor">
+
+    <div class="editor__header">
+        {{ fields.0.file_name}}
+    </div>
+
+    <div class="editor__body">
+        <textarea id="editor__ide">{{fields.0.value}}</textarea>
+    </div>
+
+</template>
+
+
 <template id="testResults">
-    
-    <h2>Результаты проверки</h2>
-    
-    
+
+    {{#each tests}}
+    <p>
+        {{#if this.passed}} ✅ {{else}} ❌ {{/if}}
+        {{this.title}}
+    </p>
+    {{/each}}
 </template>
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -140,7 +147,11 @@
 
 <script>
 
-const app = new App(2).start()
+const urlObj = new URL(window.location.href);
+const taskID = urlObj.pathname.split('/').filter(Boolean).pop()
+console.log(taskID)
+
+const app = new App(taskID).start()
 app.testRunner = new TestRunner()
 
 </script>

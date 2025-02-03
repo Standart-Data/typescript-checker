@@ -22,11 +22,10 @@ app.set('view engine', 'handlebars');
 app.set('views', './views'); // Make sure this path is correct
 
 
-
 app.get('/:taskID', async (req, res) => {
     try {
         const exerciseData = await loadExercise(req.params.taskID)
-        res.sendFile('index.html', { root: join(__dirname, 'views') }); // Relative path
+        res.sendFile('typescript.html', { root: join(__dirname, 'views') }); // Relative path
     }  catch  (error) {
         res.status(500).json({"error": "Cannot load exercise data. Please contact server administrator"})
     }
@@ -66,40 +65,21 @@ app.post('/process', (req, res) => {
 })
 
 
+app.post('/parse', (req, res) => {
 
+    const files = req.body;
+    const result = {};
 
+    for (const [filename, filecontent] of Object.entries(files)) {
+        const tempFilePath = createTempFileWithContent(filecontent);
+        result[filename] = readTsFiles([tempFilePath])
+    }
 
-// app.post('/check/:taskID', async (req, res) => {
-//     const taskId = req.params.taskID;
-//     const mainContent = await req.body;
-//
-//     console.log("/n Получено решение /n"+req.body+"/n")
-//
-//     if (!mainContent) {
-//         return res.status(400).json({error: 'Missing code in request body'});
-//     }
-//
-//
-//     try {
-//         const exerciseData = await loadExercise(taskId) // Загружаем данные упражнения, но mainContent не берем
-//         const tempFilePath = createTempFileWithContent(mainContent);
-//         const allVariables = readTsFiles([tempFilePath])
-//
-//         const testContent = "const assert = require(\"assert\");\n" +
-//             `const allVariables = ${JSON.stringify(allVariables)};\n` +
-//             exerciseData["tests"];
-//
-//         const testFilePath = createTempFileWithContent(testContent);
-//         const testResults = await runMochaTests(testFilePath);
-//
-//         res.setHeader('Content-Type', 'application/json');
-//         res.json(testResults);
-//
-//     } catch (error) {
-//         console.error('Error processing request:', error);
-//         res.status(500).json({error: 'Internal server error'});
-//     }
-// })
+    res.setHeader('Content-Type', 'application/json')
+    res.json(result);
+
+});
+
 
     app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
