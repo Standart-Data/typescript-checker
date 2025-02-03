@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Web App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/material-darker.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/typescript@5.4.2/lib/typescript.js"></script>
+
+    <script src="https://unpkg.com/chai@4.5.0/chai.js"></script>
+    <script src="https://unpkg.com/mocha@11.0.0/mocha.js"></script>
+
+    <script src="https://unpkg.com/@tailwindcss/browser@4" ></script>
+
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body class="bg-[#A8B2CA] h-full">
+
+<div class="m-2 grid grid-cols-3 h-full w-full">
+
+    <div class="m-2 h-full bg-white rounded-xl overflow-hidden">
+
+        <section class="grid  grid-cols-2 p-4 bg-[#EFEFEF] text-[#777]">
+            <div class="text-left">Задание</div>
+            <div class="text-right">Cложность</div>
+        </section>
+
+
+        <section class="bg-grey p-4" id="theExercise">
+
+            <!-- Здесь будет загружено упражнение -->
+
+        </section>
+
+    </div>
+
+    <!-- Центральная колонка -->
+
+    <div class="m-2 h-full bg-[#212121] rounded-xl">
+
+        <section id="theEditor">
+
+            <div class="tabs">
+                main.ts
+            </div>
+            <!-- /.tabs -->
+
+            <div class="editor">
+                <textarea id="editor">{{exercise.fields.0.value}}</textarea>
+            </div>
+
+        </section>
+
+    </div>
+
+    <div class="m-2 p-4 h-full bg-white bg-white rounded-xl">
+
+
+        <section id="theConsole" >
+
+            загружаем консоль
+
+        </section>
+
+        <section id="theOutput">
+
+
+
+        </section>
+
+        <section id="theTestResults">
+
+
+
+        </section>
+
+    </div>
+</div>
+
+
+
+
+<template id="exercise">
+
+    <!--    <section class="p-4 bg-[#3CC39E] text-white ">-->
+    <!--        Задание выполнено! Код подтверждения: IDDQD-->
+    <!--    </section>-->
+
+    <h2 class="text-2xl">
+        {{exercise.title}}
+    </h2>
+
+    <p>Level: {{exercise.level}}</p>
+
+    <!-- Текст упражнения -->
+
+    <div class="text mt-3">
+        {{{ exercise.text }}}
+    </div>
+
+    <!-- Кнопка проверки-->
+
+    <div class="controls mt-3">
+        <button onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer" > Запустить </button>
+        <button onclick="app.check()" class="bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" > Проверить </button>
+    </div>
+
+    <div id="test-results"></div>
+
+</template>
+
+<template id="console">
+    <h2>Ошибки</h2>
+    {{#each records}}
+    <li>{{this.message}}</li>
+    {{/each}}
+</template>
+
+<template id="output">
+    <h2>Результат</h2>
+    {{code}}
+</template>
+
+<template id="testResults">
+    
+    <h2>Результаты проверки</h2>
+    
+    
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+
+
+<script src="/test_runner.js"></script>
+<script src="/component.class.js"></script>
+<script src="/task.class.js"></script>
+<script src="/app.js"></script>
+
+<script>
+
+const app = new App(2).start()
+app.testRunner = new TestRunner()
+
+</script>
+
+
+</body>
+</html>
