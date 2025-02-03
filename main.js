@@ -5,7 +5,9 @@ const cors = require('cors');
 const handlebars = require('express-handlebars');
 const { createTempFileWithContent, readTsFiles} = require('./parse');
 const { loadExercise } = require('./load')
+const { TSProcessor } = require('./classes/ts_processor')
 const {runMochaTests} = require("./runMocha");
+const {join} = require("node:path");
 
 const app = express();
 const port = 10000;
@@ -20,25 +22,10 @@ app.set('view engine', 'handlebars');
 app.set('views', './views'); // Make sure this path is correct
 
 
-app.get('/test', (req, res) => {
-
-    const mock = {
-        id: 3,
-        title: "Шаг 3 – ипотечный калькулятор",
-        fields: [{"value": " const a: string | number = 5;\n let b: string = \"Its a string\"; "}],
-        text: "Создайте простой ипотечный калькулятор с использованием React. Этот калькулятор должен позволять пользователю вводить основную сумму кредита, процентную ставку и срок кредита, а затем вычислять и отображать ежемесячный платеж.",
-
-    }
-
-    res.render('index', {layout: null, exercise:  mock });
-
-})
-
-
 app.get('/:taskID', async (req, res) => {
     try {
         const exerciseData = await loadExercise(req.params.taskID)
-        res.render('index', {layout: null, exercise: exerciseData}); // This will render views/index.handlebars
+        res.sendFile('typescript.html', { root: join(__dirname, 'views') }); // Relative path
     }  catch  (error) {
         res.status(500).json({"error": "Cannot load exercise data. Please contact server administrator"})
     }
@@ -55,6 +42,29 @@ app.get('/load/:taskID', async (req, res) => {
     }
 })
 
+
+app.post('/validate', (req, res) => {
+
+    const requestData = req.body;
+    const processor = new TSProcessor(requestData["main.ts"])
+    processor.validate()
+
+    res.setHeader('Content-Type', 'application/json')
+    res.json(processor.errors);
+
+})
+
+app.post('/process', (req, res) => {
+
+    const requestData = req.body;
+    const processor = new TSProcessor(requestData["main.ts"])
+    processor.process()
+    res.setHeader('Content-Type', 'application/json')
+    res.json({"main.js": processor.result});
+
+})
+
+
 app.post('/parse', (req, res) => {
 
     const files = req.body;
@@ -69,73 +79,6 @@ app.post('/parse', (req, res) => {
     res.json(result);
 
 });
-
-app.get('/parse/:taskID', async (req, res) => {
-
-    const exerciseData = await loadExercise(req.params.taskID)
-    const mainContent = exerciseData["fields"][0]["value"]
-
-    const tempFilePath = createTempFileWithContent(mainContent);
-    const allVariables = readTsFiles([tempFilePath])
-
-    res.setHeader('Content-Type', 'application/json')
-    res.json(allVariables);
-
-});
-
-app.get('/test/:taskID', async (req, res) => {
-
-    const exerciseData = await loadExercise(req.params.taskID)
-    const mainContent = exerciseData["fields"][0]["value"]
-
-    const tempFilePath = createTempFileWithContent(mainContent);
-    const allVariables = readTsFiles([tempFilePath])
-
-    const testContent = "const assert = require(\"assert\");\n" +
-        `const allVariables = ${JSON.stringify(allVariables)};\n` +
-        exerciseData["tests"]
-    const testFilePath = createTempFileWithContent(testContent);
-    const testResults = await runMochaTests(testFilePath)
-
-    res.setHeader('Content-Type', 'application/json')
-    res.json(testResults);
-
-});
-
-
-app.post('/check/:taskID', async (req, res) => {
-    const taskId = req.params.taskID;
-    const mainContent = await req.body;
-
-    console.log("/n Получено решение /n"+req.body+"/n")
-
-    if (!mainContent) {
-        return res.status(400).json({error: 'Missing code in request body'});
-    }
-
-
-
-    try {
-        const exerciseData = await loadExercise(taskId) // Загружаем данные упражнения, но mainContent не берем
-        const tempFilePath = createTempFileWithContent(mainContent);
-        const allVariables = readTsFiles([tempFilePath])
-
-        const testContent = "const assert = require(\"assert\");\n" +
-            `const allVariables = ${JSON.stringify(allVariables)};\n` +
-            exerciseData["tests"];
-
-        const testFilePath = createTempFileWithContent(testContent);
-        const testResults = await runMochaTests(testFilePath);
-
-        res.setHeader('Content-Type', 'application/json');
-        res.json(testResults);
-
-    } catch (error) {
-        console.error('Error processing request:', error);
-        res.status(500).json({error: 'Internal server error'});
-    }
-})
-
 
 
     app.listen(port, () => {

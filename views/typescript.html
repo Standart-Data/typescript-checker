@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Web App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/material-darker.min.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <script src="https://cdn.jsdelivr.net/npm/typescript@5.4.2/lib/typescript.js"></script>
+
+    <script src="https://unpkg.com/chai@4.5.0/chai.js"></script>
+    <script src="https://unpkg.com/mocha@11.0.0/mocha.js"></script>
+
+    <script src="https://unpkg.com/@tailwindcss/browser@4" ></script>
+
+    <link rel="stylesheet" href="/app.css">
+</head>
+<body class="bg-[#A8B2CA] h-full">
+
+<div class="m-2 grid grid-cols-3 h-full w-full">
+
+    <div class="m-2 h-full bg-white rounded-xl overflow-hidden">
+
+        <section class="grid  grid-cols-2 p-4 bg-[#EFEFEF] text-[#777]">
+            <div class="text-left">Задание</div>
+            <div class="text-right">Cложность</div>
+        </section>
+
+
+        <section class="bg-grey p-4" id="theExercise">
+
+            <!-- Здесь будет загружено упражнение -->
+
+        </section>
+
+    </div>
+
+    <!-- Центральная колонка -->
+
+    <div class="m-2 h-full bg-[#212121] rounded-xl">
+
+        <section id="theEditor"> </section>
+
+    </div>
+
+    <div class="grid grid-rows-2 gap-4 pr-4 ">
+
+        <div class="m-2 h-full bg-white bg-white rounded-xl overflow-hidden">
+
+            <section class="grid p-4 bg-[#EFEFEF] text-[#777]">
+                <p class="">Результат и ошибки</p>
+            </section>
+
+            <section id="theOutput" class="p-4"> </section>
+            <section id="theConsole" class="p-4">  </section>
+
+        </div>
+
+        <div class="m-2 h-full bg-white rounded-xl overflow-hidden">
+
+            <section class="grid p-4 bg-[#EFEFEF] text-[#777]">
+                <p class="">Задания (Выполнено 0 из 0)</p>
+            </section>
+
+            <section id="theTestResults" class="p-4">
+
+            </section>
+
+        </div>
+
+    </div>
+</div>
+
+
+
+<template id="exercise">
+
+    <!--    <section class="p-4 bg-[#3CC39E] text-white ">-->
+    <!--        Задание выполнено! Код подтверждения: IDDQD-->
+    <!--    </section>-->
+
+    <h2 class="text-2xl">
+        {{exercise.title}}
+    </h2>
+
+    <!-- Текст упражнения -->
+
+    <div class="text mt-3">
+        {{{ exercise.text }}}
+    </div>
+
+    <!-- Кнопки проверки-->
+    <div class="controls mt-3">
+        <button onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer" > Запустить </button>
+        <button onclick="app.check()" class="bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" > Проверить </button>
+    </div>
+
+</template>
+
+<template id="output">
+
+    {{#if errors}}
+        <h2>Ошибки валидации:</h2>
+        {{#each errors}}
+        <p>🚨{{this.message}}</p>
+        {{/each}}
+    {{else}}
+        <pre>{{code}}</pre>
+    {{/if}}
+
+</template>
+
+
+<template id="editor">
+
+    <div class="editor__header">
+        {{ fields.0.file_name}}
+    </div>
+
+    <div class="editor__body">
+        <textarea id="editor__ide">{{fields.0.value}}</textarea>
+    </div>
+
+</template>
+
+
+<template id="testResults">
+
+    {{#each tests}}
+    <p>
+        {{#if this.passed}} ✅ {{else}} ❌ {{/if}}
+        {{this.title}}
+    </p>
+    {{/each}}
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+
+
+<script src="/test_runner.js"></script>
+<script src="/component.class.js"></script>
+<script src="/task.class.js"></script>
+<script src="/app.js"></script>
+
+<script>
+
+const urlObj = new URL(window.location.href);
+const taskID = urlObj.pathname.split('/').filter(Boolean).pop()
+console.log(taskID)
+
+const app = new App(taskID).start()
+app.testRunner = new TestRunner()
+
+</script>
+
+
+</body>
+</html>

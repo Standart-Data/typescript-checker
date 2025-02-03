@@ -233,6 +233,7 @@ function readTsFiles(filePaths) {
           allVariables.interfaces[interfaceName] = { properties };
           break;
         case ts.SyntaxKind.FunctionDeclaration:
+          console.log(node)
           const functionName = node.name.getText();
           const params = node.parameters.map((param) => ({
             name: param.name.getText(),
