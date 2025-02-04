@@ -7,7 +7,6 @@ class TestRunner {
         this.dom = {};
         this.errors = []
         this.editor = {}
-
         this.mocha = mocha
         this.mocha.setup({ui:'bdd', cleanReferencesAfterRun: false });
         this.mocha.reporter('Silent');
@@ -19,7 +18,7 @@ class TestRunner {
     * – DOM превьюшки
     * */
 
-    async run(testString, allVariables) {
+    async run(testString, mountingContext={}) {
 
         const results = {};
         results.tests = []
@@ -30,8 +29,17 @@ class TestRunner {
         this.mocha.suite.suites = []; // Clear all suites
         this.mocha.suite.tests = [];  //Clear all tests
 
-        const testFunction = new Function("allVariables", "expect", "assert",  testString);
-        testFunction(allVariables["main.ts"], expect, assert);
+        const defaultContext = {
+            allVariables: {},
+            dom: {},
+            fetch: () => {},
+            editor: {},
+        }
+
+        const mc  = { ...defaultContext, ...mountingContext };
+
+        const testFunction = new Function("allVariables", "dom", "fetch", "editor", "expect", "assert",  testString);
+        testFunction(mc.allVariables, mc.dom, mc.fetch, mc.editor, expect, assert);
 
         return new Promise((resolve, reject) => { // Return a Promise
         this.mocha.run()
