@@ -50,6 +50,7 @@ class App {
 
         const ideNode =  this.components.editor.refs["ide"]
         return ideNode.getValue()
+
     }
 
     async run() {
@@ -58,25 +59,42 @@ class App {
 
         const editorValue = this.getEditorValues()
         const errors = await this.task.validate(editorValue)
-        const response = await this.task.process(editorValue)
 
-        this.components.output.update({"code": response["main.js"], errors: errors})
+        const responseAllFiles = await this.task.process(editorValue)
+        const responseJS = responseAllFiles["main.js"];
+
+        const srcdoc = `<script>${responseJS}</script>`
+
+        this.components.output.update({"code": responseJS, errors: errors, srcdoc: srcdoc})
 
     }
 
     async parse(){
 
         const editorValue = this.getEditorValues()
-        const allVariables = await this.task.parseUserCode(editorValue)
-        return allVariables
+        return await this.task.parseUserCode(editorValue)
 
     }
 
     async check() {
 
+        await this.run()
+
         const tests = this.task.tests
         const allVariables = await this.parse()
-        const result = await this.testRunner.run(tests, allVariables)
+
+        const domDocument = document.querySelector("#output__iframe")
+
+        const context = {
+            allVariables: allVariables["main.ts"],
+            dom: domDocument.contentWindow || domDocument.contentDocument.defaultView,
+            editor: {"main.ts": this.getEditorValues()},
+            fetch: () => {}
+        }
+
+        console.log(context)
+
+        const result = await this.testRunner.run(tests, context)
         this.components.testResults.update({tests: result.tests})
 
     }
