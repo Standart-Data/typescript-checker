@@ -33,7 +33,9 @@ function readTsFiles(filePaths) {
     function parseObject(node, checker) {
       const obj = {};
       ts.forEachChild(node, (property) => {
-        const name = property.name ? property.name.getText() : undefined;
+        const name = property.name
+          ? property.name.getText().replace(/['"]+/g, "")
+          : undefined;
         if (name) {
           const propType = checker.getTypeAtLocation(property);
           const type = checker.typeToString(propType);
