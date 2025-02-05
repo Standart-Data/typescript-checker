@@ -1,3 +1,7 @@
+Handlebars.registerHelper('eq', function(a, b) {
+    return a === b; // Or a == b if you want loose equality
+});
+
 class Component {
 
     constructor(selector, templateName, data ){
