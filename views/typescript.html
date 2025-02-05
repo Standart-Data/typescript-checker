@@ -21,9 +21,8 @@
 
     <div class="m-2 h-full bg-white rounded-xl overflow-hidden">
 
-        <section class="grid  grid-cols-2 p-4 bg-[#EFEFEF] text-[#777]">
+        <section class="grid  grid-cols-2 p-4 bg-[#EFEFEF] text-[#201e2e] font-bold">
             <div class="text-left">Задание</div>
-            <div class="text-right">Cложность</div>
         </section>
 
 
@@ -37,7 +36,7 @@
 
     <!-- Центральная колонка -->
 
-    <div class="m-2 h-full bg-[#212121] rounded-xl">
+    <div class="m-2 h-full bg-[#212121] rounded-xl overflow-hidden font-bold">
 
         <section id="theEditor"> </section>
 
@@ -45,9 +44,9 @@
 
     <div class="grid grid-rows-2 gap-4 pr-4 ">
 
-        <div class="m-2 h-full bg-white bg-white rounded-xl overflow-hidden">
+        <div class="m-2 h-full bg-white bg-white rounded-xl overflow-hidden font-bold">
 
-            <section class="grid p-4 bg-[#EFEFEF] text-[#777]">
+            <section class="grid p-4 bg-[#EFEFEF]  text-[#201e2e] ">
                 <p class="">Результат и ошибки</p>
             </section>
 
@@ -56,9 +55,9 @@
 
         </div>
 
-        <div class="m-2 h-full bg-white rounded-xl overflow-hidden">
+        <div class="m-2 h-full bg-white rounded-xl overflow-hidden ">
 
-            <section class="grid p-4 bg-[#EFEFEF] text-[#777]">
+            <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
                 <p class="">Задания (Выполнено 0 из 0)</p>
             </section>
 
@@ -115,11 +114,12 @@
 
 <template id="editor">
 
-    <div class="editor__header">
-        {{ fields.0.file_name}}
+    <div class="editor__header grid p-4 bg-[#15141F] text-[#777]">
+        <p class=""> {{ fields.0.file_name}}</p>
     </div>
 
-    <div class="editor__body">
+
+    <div class="editor__body mt-4">
         <textarea id="editor__ide">{{fields.0.value}}</textarea>
     </div>
 

@@ -1,16 +1,38 @@
 body {height: 95vh;}
 
-#theExercise pre{
+#theExercise {
+    overflow: scroll;
+    max-height: 95vh;
+    padding-bottom: 100px;
+}
 
+#theExercise pre{
     background-color: #ddd;
     padding: 16px;
     font-size: 1em;
     border-radius: 8px;
-
+    white-space: pre-line;
 }
 
 #theExercise h2, h3 {
-
     font-size: 2em;
+}
 
+#theExercise u {
+    font-family: monospace;
+    font-size: 14px;
+    font-style: normal;
+    padding: 4px 8px;
+    background-color: #E1E3EA;
+    border-radius: 6px;
+    color: var(--color-brand);
+    text-decoration: none;
+}
+
+#theOutput pre{
+    white-space: pre-line;
+}
+
+.CodeMirror {
+    height: 100%;
 }
