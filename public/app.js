@@ -92,10 +92,11 @@ class App {
             fetch: () => {}
         }
 
-        console.log(context)
-
         const result = await this.testRunner.run(tests, context)
-        this.components.testResults.update({tests: result.tests})
+        const passedCount = result.tests.filter(item => item.passed).length;
+        const totalCount = result.tests.length
+
+        this.components.testResults.update({tests: result.tests, passed:passedCount, total: totalCount})
 
     }
 }

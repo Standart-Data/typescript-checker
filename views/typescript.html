@@ -57,13 +57,9 @@
 
         <div class="m-2 h-full bg-white rounded-xl overflow-hidden ">
 
-            <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
-                <p class="">Задания (Выполнено 0 из 0)</p>
-            </section>
+            <div id="theTestResults" >
 
-            <section id="theTestResults" class="p-4">
-
-            </section>
+            </div>
 
         </div>
 
@@ -128,12 +124,28 @@
 
 <template id="testResults">
 
-    {{#each tests}}
-    <p>
-        {{#if this.passed}} ✅ {{else}} ❌ {{/if}}
-        {{this.title}}
-    </p>
-    {{/each}}
+
+    {{#if (eq passed total)}}
+    <section class="grid p-4 bg-[#3FC39E] text-[#ffffff]] font-bold">
+        <p class="">Задание выполнено! Код IDKFA</p>
+    </section>
+    {{else}}
+
+    <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
+        <p class="">Выполнено {{passed}} из {{total}}</p>
+    </section>
+
+    {{/if}}
+
+    <div class="p-4">
+        {{#each tests}}
+        <p>
+            {{#if this.passed}} ✅ {{else}} ❌ {{/if}}
+            {{this.title}}
+        </p>
+        {{/each}}
+    </div>
+
 </template>
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
