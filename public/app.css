@@ -1,4 +1,8 @@
-body {}
+body {
+
+    font-family: "Fedra Sans Pro", Corpid, Arial, sans-serif;
+    color: #201e2e;
+}
 
 .fit-content {width: fit-content;}
 
@@ -11,7 +15,7 @@ body {}
 #theExercise pre{
     background-color: #ddd;
     padding: 16px;
-    font-size: 1em;
+    font-size: 14px;
     border-radius: 8px;
     white-space: pre-line;
 }
@@ -52,3 +56,28 @@ body {}
 .CodeMirror { height: 100%; }
 
 #theEditor .CodeMirror-hscrollbar {left: 0; !important; }
+
+#theTestResults li {
+    position: relative;
+    padding-left: 24px;
+}
+
+#theTestResults li::before{
+    content: "";
+    width: 16px;
+    height: 16px;
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 4px;
+    border: 1.59px solid grey;
+    border-radius: 3px;
+    box-sizing: border-box;
+}
+
+
+
+#theTestResults li.passed::before {
+    border:none;
+    background-color: #3CC39E;
+}

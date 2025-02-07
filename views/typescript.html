@@ -12,6 +12,7 @@
     <script src="https://unpkg.com/mocha@11.0.0/mocha.js"></script>
 
     <script src="https://unpkg.com/@tailwindcss/browser@4" ></script>
+    <script src="https://kit.fontawesome.com/eb1186874f.js" crossorigin="anonymous"></script>
 
     <link rel="stylesheet" href="/app.css">
 </head>
@@ -19,9 +20,9 @@
 
 <div class="grid grid-cols-3 h-full ">
 
-    <div class="m-2  bg-white rounded-xl overflow-hidden">
+    <div class="m-2  bg-[#f4f5f8] rounded-xl overflow-hidden shadow-lg">
 
-        <section class="grid  grid-cols-2 p-4 bg-[#EFEFEF] text-[#201e2e] font-bold">
+        <section class="grid  grid-cols-2 p-4 bg-[#e6e8ed] font-bold">
             <div class="text-left">Задание</div>
         </section>
 
@@ -36,21 +37,21 @@
 
     <!-- Центральная колонка -->
 
-    <div class="m-2  bg-[#212121] rounded-xl overflow-hidden font-bold relative">
+    <div class="m-2  bg-[#212121] rounded-xl overflow-hidden font-bold relative shadow-lg">
 
         <section id="theEditor"> </section>
 
-        <button onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer z-10 absolute bottom-5 right-5 " > Запустить </button>
+<!--        <button id="runbutton" onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer z-10 absolute bottom-5 right-5 " > Запустить </button>-->
 
     </div>
 
     <!-- Правая колонка   -->
 
-    <div class="h-screen grid grid-rows-[auto_1fr] pr-4 ">
+    <div class="h-screen grid grid-rows-[auto_1fr] shadow-lg">
 
-        <div class="m-2 bg-white  rounded-xl overflow-hidden font-bold">
+        <div class="m-2 bg-[#f4f5f8]   rounded-xl overflow-hidden font-bold">
 
-            <section class="p-4 bg-[#EFEFEF]  text-[#201e2e] ">
+            <section class="p-4 bg-[#e6e8ed]  text-[#201e2e] ">
                 <p class="">Результат и ошибки</p>
             </section>
 
@@ -59,7 +60,7 @@
 
         </div>
 
-        <div class="m-2 bg-white rounded-xl overflow-hidden relative">
+        <div class="m-2 bg-[#f4f5f8]  rounded-xl overflow-hidden relative">
 
             <div id="theTestResults" >
 
@@ -74,9 +75,15 @@
 
 <template id="exercise">
 
-    <h2 class="text-2xl">
+    <div class="level text-lg text-slate-500">
+        Cложность: <span class="m-1">✽</span><span class="m-1 opacity-50">✽</span><span class="m-1 opacity-50">✽</span>
+    </div>
+
+    <h2 class="text-2xl font-bold">
         {{exercise.title}}
     </h2>
+
+
 
     <!-- Текст упражнения -->
 
@@ -126,7 +133,7 @@
 
 <template id="editor">
 
-    <div class="editor__header grid p-4 bg-[#15141F] text-[#777]">
+    <div class="editor__header grid p-4 bg-[#15141F] text-[#ffffff]">
         <p class=""> {{ fields.0.file_name}}</p>
     </div>
 
@@ -139,9 +146,11 @@
 
 <template id="testResults">
 
-    {{#if (eq errors.length 0)}}
+    <button id="checkbutton" onclick="app.check()" class="absolute right-3 top-2 bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" >
+        Запустить и проверить
+    </button>
 
-    <button onclick="app.check()" class="absolute right-3 top-2 bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" > Проверить </button>
+    {{#if (eq errors.length 0)}}
 
     {{#if completed}}
         <section class="grid p-4 bg-[#3FC39E] text-[#ffffff]] font-bold">
@@ -155,19 +164,27 @@
 
         {{/if}}
 
-        <div class="p-4">
+        <ul class="p-4">
             {{#each tests}}
-            <p>
-                {{#if this.passed}} ✅ {{else}} ❌ {{/if}}
-                {{this.title}}
-            </p>
+
+                {{#if this.passed}}
+                <li class="passed text-[#3ba68c] font-bold" > {{this.title}} </li>
+                {{else}}
+                <li>{{this.title}}</li>
+                {{/if}}
+
             {{/each}}
-        </div>
+        </ul>
 
     {{else}}
         <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
-            <p class="">Ошибки в коде, нельзя проверить.</p>
+            <p class="">Ошибки в коде</p>
         </section>
+
+        <div class="p-4">
+            <p>Проверка не запущена, так как код не выполнился из-за ошибок. Внесите изменения и запустите повторно!</p>
+        </div>
+
     {{/if}}
 
 </template>
