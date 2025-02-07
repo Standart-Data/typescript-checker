@@ -15,11 +15,11 @@
 
     <link rel="stylesheet" href="/app.css">
 </head>
-<body class="bg-[#A8B2CA] h-full">
+<body class="bg-[#A8B2CA] ">
 
-<div class="m-2 grid grid-cols-3 h-full w-full">
+<div class="grid grid-cols-3 h-full ">
 
-    <div class="m-2 h-full bg-white rounded-xl overflow-hidden">
+    <div class="m-2  bg-white rounded-xl overflow-hidden">
 
         <section class="grid  grid-cols-2 p-4 bg-[#EFEFEF] text-[#201e2e] font-bold">
             <div class="text-left">Задание</div>
@@ -36,26 +36,30 @@
 
     <!-- Центральная колонка -->
 
-    <div class="m-2 h-full bg-[#212121] rounded-xl overflow-hidden font-bold">
+    <div class="m-2  bg-[#212121] rounded-xl overflow-hidden font-bold relative">
 
         <section id="theEditor"> </section>
 
+        <button onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer z-10 absolute bottom-5 right-5 " > Запустить </button>
+
     </div>
 
-    <div class="grid grid-rows-2 gap-4 pr-4 ">
+    <!-- Правая колонка   -->
 
-        <div class="m-2 h-full bg-white bg-white rounded-xl overflow-hidden font-bold">
+    <div class="h-screen grid grid-rows-[auto_1fr] pr-4 ">
 
-            <section class="grid p-4 bg-[#EFEFEF]  text-[#201e2e] ">
+        <div class="m-2 bg-white  rounded-xl overflow-hidden font-bold">
+
+            <section class="p-4 bg-[#EFEFEF]  text-[#201e2e] ">
                 <p class="">Результат и ошибки</p>
             </section>
 
-            <section id="theOutput" class="p-4"> </section>
-            <section id="theConsole" class="p-4">  </section>
+            <section id="theOutput" class="p-4 text-xs"> </section>
+            <section id="theConsole" class="p-4 text-xs">  </section>
 
         </div>
 
-        <div class="m-2 h-full bg-white rounded-xl overflow-hidden ">
+        <div class="m-2 bg-white rounded-xl overflow-hidden relative">
 
             <div id="theTestResults" >
 
@@ -70,10 +74,6 @@
 
 <template id="exercise">
 
-    <!--    <section class="p-4 bg-[#3CC39E] text-white ">-->
-    <!--        Задание выполнено! Код подтверждения: IDDQD-->
-    <!--    </section>-->
-
     <h2 class="text-2xl">
         {{exercise.title}}
     </h2>
@@ -84,11 +84,6 @@
         {{{ exercise.text }}}
     </div>
 
-    <!-- Кнопки проверки-->
-    <div class="controls mt-3">
-        <button onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer" > Запустить </button>
-        <button onclick="app.check()" class="bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" > Проверить </button>
-    </div>
 
 </template>
 
@@ -124,27 +119,36 @@
 
 <template id="testResults">
 
+    {{#if (eq errors.length 0)}}
 
-    {{#if (eq passed total)}}
-    <section class="grid p-4 bg-[#3FC39E] text-[#ffffff]] font-bold">
-        <p class="">Задание выполнено! Код IDKFA</p>
-    </section>
+    <button onclick="app.check()" class="absolute right-3 top-2 bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" > Проверить </button>
+
+    {{#if completed}}
+        <section class="grid p-4 bg-[#3FC39E] text-[#ffffff]] font-bold">
+            <p class="">Задание выполнено! Код IDKFA</p>
+        </section>
+        {{else}}
+
+        <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
+            <p class="">Выполнено {{countTrue tests "passed"}} из {{tests.length}}</p>
+        </section>
+
+        {{/if}}
+
+        <div class="p-4">
+            {{#each tests}}
+            <p>
+                {{#if this.passed}} ✅ {{else}} ❌ {{/if}}
+                {{this.title}}
+            </p>
+            {{/each}}
+        </div>
+
     {{else}}
-
-    <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
-        <p class="">Выполнено {{passed}} из {{total}}</p>
-    </section>
-
+        <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
+            <p class="">Ошибки в коде, нельзя проверить.</p>
+        </section>
     {{/if}}
-
-    <div class="p-4">
-        {{#each tests}}
-        <p>
-            {{#if this.passed}} ✅ {{else}} ❌ {{/if}}
-            {{this.title}}
-        </p>
-        {{/each}}
-    </div>
 
 </template>
 
