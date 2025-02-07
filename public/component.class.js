@@ -2,6 +2,14 @@ Handlebars.registerHelper('eq', function(a, b) {
     return a === b; // Or a == b if you want loose equality
 });
 
+Handlebars.registerHelper('countTrue', function(arr, key) {
+    if (!Array.isArray(arr) || typeof key !== 'string') { return 0 }
+
+    return arr.reduce((count, item) => {
+        if (item && typeof item === 'object' && item[key] === true) { return count + 1 } return count
+    }, 0);
+});
+
 class Component {
 
     constructor(selector, templateName, data ){

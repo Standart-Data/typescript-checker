@@ -5,12 +5,15 @@ class App {
     constructor(taskID, taskType="TS"){
 
         this.task = new Task(taskID)
+        this.errors = []
+        this.completed = []
+        this.tests = []
+
         this.components = {
 
             exercise: new Component("#theExercise", "exercise", {exercise: {title: "Загружаем задание"}}),
             output: new Component("#theOutput", "output", {code: "// запустите, чтобы посмотреть", records: []}),
             testResults: new Component("#theTestResults", "testResults", {"tests": []}),
-
             editor: new Component("#theEditor", "editor", {"fields": {}}),
 
         }
@@ -58,14 +61,21 @@ class App {
         console.log("Запускаем выполнение упражнения")
 
         const editorValue = this.getEditorValues()
-        const errors = await this.task.validate(editorValue)
+        this.errors = await this.task.validate(editorValue)
+
+        if (this.errors.length > 0) {
+            this.components.output.update({errors: this.errors})
+            this.components.testResults.update({tests: this.tests, completed: this.completed, errors: this.errors, })
+            return
+        }
 
         const responseAllFiles = await this.task.process(editorValue)
         const responseJS = responseAllFiles["main.js"];
 
         const srcdoc = `<script>${responseJS}</script>`
 
-        this.components.output.update({"code": responseJS, errors: errors, srcdoc: srcdoc})
+        this.components.output.update({"code": responseJS, errors: this.errors, srcdoc: srcdoc})
+        this.components.testResults.update({errors: this.errors, tests: this.tests})
 
     }
 
@@ -79,8 +89,13 @@ class App {
     async check() {
 
         await this.run()
+        await this.runTests()
+        this.components.testResults.update({tests: this.tests, errors: this.errors, completed: this.completed})
 
-        const tests = this.task.tests
+    }
+
+    async runTests(){
+
         const allVariables = await this.parse()
 
         const domDocument = document.querySelector("#output__iframe")
@@ -92,11 +107,8 @@ class App {
             fetch: () => {}
         }
 
-        const result = await this.testRunner.run(tests, context)
-        const passedCount = result.tests.filter(item => item.passed).length;
-        const totalCount = result.tests.length
-
-        this.components.testResults.update({tests: result.tests, passed:passedCount, total: totalCount})
-
+        const result = await this.testRunner.run(this.task.tests, context)
+        this.tests = result.tests
+        this.completed = this.tests.every(t => t.passed);
     }
 }
