@@ -84,6 +84,28 @@
         {{{ exercise.text }}}
     </div>
 
+    <details>
+        <summary class="flex cursor-pointer list-none items-center bg-[#3CC39E] text-[#ffffff] px-4 py-2 my-4 rounded-lg fit-content">
+            <span class="mr-2">Подсказка</span>
+
+            <svg
+                    class="w-5 h-5 transition duration-300 group-open:-rotate-180"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+            >
+                <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                />
+            </svg>
+
+        </summary>
+        {{{ exercise.prompt }}}
+    </details>
 
 </template>
 
@@ -102,13 +124,11 @@
 
 </template>
 
-
 <template id="editor">
 
     <div class="editor__header grid p-4 bg-[#15141F] text-[#777]">
         <p class=""> {{ fields.0.file_name}}</p>
     </div>
-
 
     <div class="editor__body mt-4">
         <textarea id="editor__ide">{{fields.0.value}}</textarea>

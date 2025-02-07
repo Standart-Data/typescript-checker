@@ -1,5 +1,7 @@
 body {}
 
+.fit-content {width: fit-content;}
+
 #theExercise {
     overflow: scroll;
     max-height: 91vh;
