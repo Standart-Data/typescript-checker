@@ -26,6 +26,7 @@ class App {
 
     async show(){
 
+        document.querySelector("title").innerHTML = this.task.data.title + " | Курс по Typescript"
 
         this.components.output.update({"code": "// запустите, чтобы посмотреть"})
         this.components.exercise.update({"exercise": this.task.data})
@@ -88,9 +89,24 @@ class App {
 
     async check() {
 
+
+        this.indicateProcess("run")
         await this.run()
+
+        this.indicateProcess("check")
         await this.runTests()
+
         this.components.testResults.update({tests: this.tests, errors: this.errors, completed: this.completed})
+
+    }
+
+    indicateProcess(processName){
+
+        const button = document.querySelector("#checkbutton")
+        if (!button){return }
+
+        if (processName==="run") {button.innerHTML = "Запускаем ..."}
+        if (processName==="check") {button.innerHTML = "Проверяем ..."}
 
     }
 
