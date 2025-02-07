@@ -91,8 +91,8 @@
         {{{ exercise.text }}}
     </div>
 
-    <details>
-        <summary class="flex cursor-pointer list-none items-center bg-[#3CC39E] text-[#ffffff] px-4 py-2 my-4 rounded-lg fit-content">
+    <details class="prompt">
+        <summary class="flex cursor-pointer list-none items-center outline-solid border-[#3CC39E] bg-[#fffff] text-[#3CC39E] px-4 py-2 my-4 rounded-lg fit-content">
             <span class="mr-2">Подсказка</span>
 
             <svg
@@ -111,7 +111,13 @@
             </svg>
 
         </summary>
-        {{{ exercise.prompt }}}
+
+        <div class="prompt__content bg-[#ffffff] rounded-lg p-4">
+            .{{{ exercise.prompt }}}
+        </div>
+
+
+
     </details>
 
 </template>
