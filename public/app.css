@@ -99,6 +99,9 @@ details[open]  summary  .hint__chevron{
     rotate: 180deg;
 }
 
+details {
+    margin-bottom: 50px;
+}
 
 /*  Resizable Columns */
 
@@ -115,6 +118,8 @@ details[open]  summary  .hint__chevron{
     background-color: var(--color-tasks-bg);
     box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.05);
 }
+
+.resizable-container  .card > * { height: 100%;}
 
 .resizable-container  .card-dark {
     background-color: var(--color-primary);
