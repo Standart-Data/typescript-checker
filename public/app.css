@@ -1,15 +1,27 @@
-body {
 
-    font-family: "Fedra Sans Pro", Corpid, Arial, sans-serif;
-    color: #201e2e;
+:root {
+    --color-bg: #D5D7DD;
+    --color-tasks-bg: #F4F5F8;
+    --color-tasks-shade: #E6E8ED;
+    --color-additional: #8A8993;
+    --color-code: #E2F8EF;
+    --color-gradient: linear-gradient(90deg, #43B593 7.75%, #40CD94 65.12%);
+    --color-brand: #3CC39E;
+    --color-primary: #201E2E;
+    --color-dark: #15141F;
 }
+
+body {
+    font-family: "Fedra Sans Pro", Corpid, Arial, sans-serif;
+    color: var(--color-primary);
+    background-color: var(--color-bg);
+}
+
 
 .fit-content {width: fit-content;}
 
 #theExercise {
-    overflow: scroll;
-    max-height: 91vh;
-    padding-bottom: 100px;
+
 }
 
 #theExercise pre{
@@ -81,3 +93,61 @@ body {
     border:none;
     background-color: #3CC39E;
 }
+
+/* Подсказка */
+
+details[open]  summary  .hint__chevron{
+    rotate: 180deg;
+}
+
+
+/*  Resizable Columns */
+
+.resizable-container {
+    display: flex;
+    width: 100%;
+    padding: 16px;
+}
+
+.resizable-container  .card {
+    background-color: var(--color-tasks-bg);
+    box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.05);
+}
+
+.resizable-container  .card-dark {
+    background-color: var(--color-primary);
+}
+
+.cm-s-material-darker.CodeMirror {
+    background-color: var(--color-primary);
+}
+
+/* Изменение ширины */
+
+.resizer {
+
+    width: 20px; /* Ширина разделителя */
+    cursor: ew-resize; /* Курсор при наведении */
+    background-image: url("/assets/three-dots-vertical.svg");
+    background-position: center center;
+    background-repeat: no-repeat;
+
+}
+
+/* Иконки */
+
+.icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background-repeat: no-repeat;
+    background-position: 0 3px;
+}
+
+.icon-check{ background-image: url("/assets/icon-check.svg"); }
+.icon-exercise{ background-image: url("/assets/icon-exercise.svg"); }
+.icon-message{ background-image: url("/assets/icon-message.svg"); }
+.icon-chevron{ background-image: url("/assets/icon-chevron.svg"); }
+
+/* Вкладки */
+
