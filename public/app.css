@@ -17,7 +17,6 @@ body {
     background-color: var(--color-bg);
 }
 
-
 .fit-content {width: fit-content;}
 
 #theExercise {
@@ -107,7 +106,10 @@ details[open]  summary  .hint__chevron{
     display: flex;
     width: 100%;
     padding: 16px;
+    max-height: calc(100vh);
 }
+
+
 
 .resizable-container  .card {
     background-color: var(--color-tasks-bg);
@@ -116,6 +118,10 @@ details[open]  summary  .hint__chevron{
 
 .resizable-container  .card-dark {
     background-color: var(--color-primary);
+}
+
+.column-left, .column-middle, .column-right {
+    height: calc(100vh - 36px);
 }
 
 .cm-s-material-darker.CodeMirror {
