@@ -14,6 +14,14 @@ describe("Class Parsing Tests", function () {
     assert.strictEqual(animalClass.name.types[0], "string", "Тип свойства name должен быть string");
     assert.strictEqual(animalClass.name.modificator, "protected", "Свойство name должно быть protected");
 
+    // Проверяем конструктор
+    assert.ok(animalClass.constructor, "Конструктор не найден");
+    assert.strictEqual(
+      animalClass.constructor.body,
+      '{\r\n    this.name = name;\r\n  }',
+      "Тело конструктора Animal не совпадает"
+    );
+
     // Проверяем методы класса
     assert.ok(animalClass.makeSound, "Метод makeSound не найден");
     assert.strictEqual(animalClass.makeSound.types[0], "function", "makeSound должен быть функцией");
@@ -29,6 +37,14 @@ describe("Class Parsing Tests", function () {
     assert.ok(dogClass.extends, "Наследование не найдено");
     assert.strictEqual(dogClass.extends.length, 1, "Dog должен наследовать один класс");
     assert.strictEqual(dogClass.extends[0], "Animal", "Dog должен наследовать Animal");
+
+    // Проверяем конструктор
+    assert.ok(dogClass.constructor, "Конструктор не найден");
+    assert.strictEqual(
+      dogClass.constructor.body.trim(),
+      "{\r\n    super(name) // Вызов конструктора родительского класса\r\n  }",
+      "Тело конструктора Dog не совпадает"
+    );
 
     // Проверяем методы класса
     assert.ok(dogClass.makeSound, "Метод makeSound не найден");

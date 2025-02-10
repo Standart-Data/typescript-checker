@@ -10,6 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@babel/parser": "^7.26.8",
+    "@babel/traverse": "^7.26.8",
+    "@babel/types": "^7.26.8",
     "@types/chai": "^5.0.1",
     "@types/mocha": "^10.0.10",
     "chai": "^5.1.2",
