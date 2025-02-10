@@ -18,72 +18,65 @@
 </head>
 <body class="bg-[#A8B2CA] ">
 
-<div class="grid grid-cols-3 h-full ">
+<div class="h-full resizable-container">
 
-    <div class="m-2  bg-[#f4f5f8] rounded-xl overflow-hidden shadow-lg">
+    <!--  Левая колонка  -->
 
-        <section class="grid  grid-cols-2 p-4 bg-[#e6e8ed] font-bold">
-            <div class="text-left">Задание</div>
-        </section>
-
-
-        <section class="bg-grey p-4" id="theExercise">
-
-            <!-- Здесь будет загружено упражнение -->
-
-        </section>
-
+    <div class="column-left  card rounded-xl overflow-hidden shadow-lg">
+        <section class="bg-grey" id="theExercise">  <!-- Здесь загрузится упражнение --></section>
     </div>
+
+    <div class="resizer resizer-left"> </div>
 
     <!-- Центральная колонка -->
 
-    <div class="m-2  bg-[#212121] rounded-xl overflow-hidden font-bold relative shadow-lg">
-
-        <section id="theEditor"> </section>
-
-<!--        <button id="runbutton" onclick="app.run()" class="bg-[#444444] text-white px-4 py-2 rounded-lg cursor-pointer z-10 absolute bottom-5 right-5 " > Запустить </button>-->
-
+    <div class="column-middle card-dark rounded-xl overflow-hidden font-bold relative shadow-lg">
+        <section id="theEditor"> <!-- Здесь загрузится редактор --> </section>
     </div>
+
+    <div class="resizer resizer-right"> </div>
 
     <!-- Правая колонка   -->
 
-    <div class="h-screen grid grid-rows-[auto_1fr] shadow-lg">
+    <div class="column-right h-screen grid grid-rows-[auto_1fr] shadow-lg">
 
-        <div class="m-2 bg-[#f4f5f8]   rounded-xl overflow-hidden font-bold">
-
-            <section class="p-4 bg-[#e6e8ed]  text-[#201e2e] ">
-                <p class="">Результат и ошибки</p>
-            </section>
-
-            <section id="theOutput" class="p-4 text-xs"> </section>
-            <section id="theConsole" class="p-4 text-xs">  </section>
-
+        <div class="card rounded-xl overflow-hidden font-bold">
+            <section id="theOutput" class="">  <!-- Здесь загрузятся вывод --> </section>
+            <section id="theConsole" class="p-5 "> <!-- Здесь загрузятся консоль --> </section>
         </div>
 
-        <div class="m-2 bg-[#f4f5f8]  rounded-xl overflow-hidden relative">
+        <div class="mt-3 card  rounded-xl overflow-hidden relative">
 
             <div id="theTestResults" >
-
+                <!-- Здесь загрузятся результаты тестов -->
             </div>
 
         </div>
-
     </div>
 </div>
 
 
-
 <template id="exercise">
 
-    <div class="level text-lg text-slate-500">
-        Cложность: <span class="m-1">✽</span><span class="m-1 opacity-50">✽</span><span class="m-1 opacity-50">✽</span>
-    </div>
+    <section class="tabs flex  bg-[#e6e8ed] font-bold">
+
+        <div class="tab-active w-fit px-5 py-4 inline-flex items-center bg-[#F4F5F8]">
+            <i class="icon icon-exercise"></i>
+            <span>Задание</span>
+        </div>
+
+        <div class="level px-5 py-4 ">
+            Cложность: <span class="m-1">✽</span><span class="m-1 opacity-50">✽</span><span class="m-1 opacity-50">✽</span>
+        </div>
+
+    </section>
+
+    <section class="p-5">
+
 
     <h2 class="text-2xl font-bold">
         {{exercise.title}}
     </h2>
-
-
 
     <!-- Текст упражнения -->
 
@@ -92,11 +85,14 @@
     </div>
 
     <details class="prompt">
-        <summary class="flex cursor-pointer list-none items-center outline-solid border-[#3CC39E] bg-[#fffff] text-[#3CC39E] px-4 py-2 my-4 rounded-lg fit-content">
-            <span class="mr-2">Подсказка</span>
+        <summary class="flex cursor-pointer list-none items-center  text-[#3CC39E] pr-4 py-2 my-4 rounded-lg fit-content">
+            <span class="mr-2 inline-flex items-center font-bold">
+                <i class="icon icon-message"></i>
+                Подсказка
+            </span>
 
             <svg
-                    class="w-5 h-5 transition duration-300 group-open:-rotate-180"
+                    class="hint__chevron w-5 h-5 transition duration-300 group-open:-rotate-180"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -112,17 +108,25 @@
 
         </summary>
 
-        <div class="prompt__content bg-[#ffffff] rounded-lg p-4">
+        <div class="prompt__content bg-[#ffffff] rounded-lg p-5">
             .{{{ exercise.prompt }}}
         </div>
 
-
-
     </details>
+
+    </section>
 
 </template>
 
 <template id="output">
+
+    <section class="tabs bg-[#e6e8ed] ">
+        <div class="active-tab w-fit px-5 py-4 bg-[#F4F5F8]">
+            {{#if errors}}Ошибки при выполнении {{else}} Результат выполнения {{/if}}
+        </div>
+    </section>
+
+    <section class="p-5 text-xs">
 
     {{#if errors}}
         <h2>Ошибки валидации:</h2>
@@ -132,6 +136,7 @@
     {{else}}
         <pre>{{code}}</pre>
     {{/if}}
+    </section>
 
     <iframe id="output__iframe" srcdoc="{{srcdoc}}"> </iframe>
 
@@ -139,7 +144,7 @@
 
 <template id="editor">
 
-    <div class="editor__header grid p-4 bg-[#15141F] text-[#ffffff]">
+    <div class="editor__header px-5 py-4 grid  bg-[#15141F] text-[#ffffff]">
         <p class=""> {{ fields.0.file_name}}</p>
     </div>
 
@@ -149,8 +154,7 @@
 
 </template>
 
-
-<template id="testResults">
+<template  id="testResults">
 
     <button id="checkbutton" onclick="app.check()" class="absolute right-3 top-2 bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" >
         Запустить и проверить
@@ -159,35 +163,43 @@
     {{#if (eq errors.length 0)}}
 
     {{#if completed}}
-        <section class="grid p-4 bg-[#3FC39E] text-[#ffffff]] font-bold">
-            <p class="">Задание выполнено! Код IDKFA</p>
+        <section class="tabs grid bg-[#3FC39E] text-[#ffffff]] font-bold">
+            <div class="tab-active px-5 py-4  bg-[#F4F5F8]" >
+                 <p class="">Задание выполнено! Код IDKFA</p>
+            </div>
         </section>
+
         {{else}}
 
-        <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
-            <p class="">Выполнено {{countTrue tests "passed"}} из {{tests.length}}</p>
+        <section class="tabs  bg-[#EFEFEF] text-[#201e2e]] font-bold">
+            <div class="tab-active  bg-[#F4F5F8] px-5 py-4 inline-flex items-center">
+                <i class="icon icon-check"></i>
+                <span>Выполнено {{countTrue tests "passed"}} из {{tests.length}}</span>
+            </div>
         </section>
 
         {{/if}}
 
-        <ul class="p-4">
+        <ul class="p-5">
             {{#each tests}}
 
                 {{#if this.passed}}
-                <li class="passed text-[#3ba68c] font-bold" > {{this.title}} </li>
+                <li class="passed mb-3 text-[#3ba68c] font-bold" > {{this.title}} </li>
                 {{else}}
-                <li>{{this.title}}</li>
+                <li class="mb-3">{{this.title}}</li>
                 {{/if}}
 
             {{/each}}
         </ul>
 
     {{else}}
-        <section class="grid p-4 bg-[#EFEFEF] text-[#201e2e]] font-bold">
-            <p class="">Ошибки в коде</p>
+        <section class="tabs grid  bg-[#EFEFEF] text-[#201e2e]] font-bold">
+            <div class="tab-active bg-[#F4F5F8] px-5 py-4">
+                <p class="">Ошибки в коде</p>
+            </div>
         </section>
 
-        <div class="p-4">
+        <div class="px-5 py-4">
             <p>Проверка не запущена, так как код не выполнился из-за ошибок. Внесите изменения и запустите повторно!</p>
         </div>
 
