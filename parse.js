@@ -232,7 +232,18 @@ function readTsFiles(filePaths) {
             const memberType = member.type.getText().trim();
             properties[name] = memberType;
           });
-          allVariables.interfaces[interfaceName] = { properties };
+
+          const extendedClause = node.heritageClauses?.find(
+            (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+          );
+          const extendedBy = extendedClause
+            ? extendedClause.types.map((type) => type.getText())
+            : [];
+
+          allVariables.interfaces[interfaceName] = {
+            properties,
+            extendedBy, // Добавляем поле extendedBy
+          };
           break;
         case ts.SyntaxKind.FunctionDeclaration:
           const functionName = node.name.getText();
@@ -359,8 +370,11 @@ function readTsFiles(filePaths) {
                 return { [paramName]: { types: [paramType], defaultValue } };
               });
 
+              const constructorBody = member.body?.getText(); // Добавляем тело конструктора
+
               classMembers["constructor"] = {
                 params: constructorParams,
+                body: constructorBody, // Сохраняем тело конструктора
               };
             }
           });
@@ -412,7 +426,7 @@ function readTsFiles(filePaths) {
       }
     }
 
-    console.log("Все найденные элементы:", allVariables);
+    console.log("Все найденные элементы:", allVariables.classes);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);
