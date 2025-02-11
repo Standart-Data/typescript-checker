@@ -292,73 +292,14 @@ function readTsFiles(filePaths) {
             ? extendsClause.types.map((type) => type.getText())
             : [];
 
-          node.members.forEach((member) => {
-            let accessModifier = "opened";
+          // Обработка конструкторов
+          const constructors = node.members.filter((member) =>
+            ts.isConstructorDeclaration(member)
+          );
 
-            if (member.name && ts.isPrivateIdentifier(member.name)) {
-              accessModifier = "private";
-            } else if (member.modifiers) {
-              if (
-                member.modifiers.some(
-                  (mod) => mod.kind === ts.SyntaxKind.PrivateKeyword
-                )
-              ) {
-                accessModifier = "private";
-              } else if (
-                member.modifiers.some(
-                  (mod) => mod.kind === ts.SyntaxKind.ProtectedKeyword
-                )
-              ) {
-                accessModifier = "protected";
-              }
-              if (
-                member.modifiers.some(
-                  (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword
-                )
-              ) {
-                accessModifier = "readonly";
-              }
-            } else if (member.name && /^_/.test(member.name.getText())) {
-              accessModifier = "protected";
-            }
-
-            const cleanName =
-              member.name?.getText()?.replace(/^[_#]/, "") || "unknown";
-
-            if (ts.isPropertyDeclaration(member)) {
-              const propertyName = cleanName;
-              const propertyType = member.type
-                ? member.type.getText().trim()
-                : "unknown";
-              const initializer = member.initializer
-                ? member.initializer.getText().trim().replace(/['"]+/g, "")
-                : null;
-              classMembers[propertyName] = {
-                types: [propertyType],
-                value: initializer,
-                modificator: accessModifier,
-              };
-            } else if (ts.isMethodDeclaration(member)) {
-              const methodName = cleanName;
-              const methodParams = member.parameters.map((param) => ({
-                name: param.name.getText(),
-                type: param.type ? param.type.getText().trim() : "any",
-              }));
-              const returnType = checker
-                .getTypeAtLocation(member)
-                .getCallSignatures()[0]
-                .getReturnType();
-              const returnTypeString = checker.typeToString(returnType);
-              const body = member.body?.getText(); // Добавляем тело метода
-              classMembers[methodName] = {
-                types: ["function"],
-                params: methodParams,
-                returnResult: [returnTypeString],
-                modificator: accessModifier,
-                body, // Сохраняем тело метода
-              };
-            } else if (ts.isConstructorDeclaration(member)) {
-              const constructorParams = member.parameters.map((param) => {
+          if (constructors.length > 0) {
+            constructors.forEach((constructor, index) => {
+              const constructorParams = constructor.parameters.map((param) => {
                 const paramName = param.name.getText();
                 const paramType = param.type
                   ? param.type.getText().trim()
@@ -370,12 +311,89 @@ function readTsFiles(filePaths) {
                 return { [paramName]: { types: [paramType], defaultValue } };
               });
 
-              const constructorBody = member.body?.getText(); // Добавляем тело конструктора
+              if (constructor.body) {
+                // Основная реализация конструктора
+                classMembers["constructor"] = {
+                  params: constructorParams,
+                  body: constructor.body.getText(),
+                };
+              } else {
+                // Сигнатура конструктора (перегрузка)
+                classMembers[`constructorSignature${index}`] = {
+                  params: constructorParams,
+                };
+              }
+            });
+          }
 
-              classMembers["constructor"] = {
-                params: constructorParams,
-                body: constructorBody, // Сохраняем тело конструктора
-              };
+          // Обработка остальных членов класса
+          node.members.forEach((member) => {
+            if (!ts.isConstructorDeclaration(member)) {
+              let accessModifier = "opened";
+
+              if (member.name && ts.isPrivateIdentifier(member.name)) {
+                accessModifier = "private";
+              } else if (member.modifiers) {
+                if (
+                  member.modifiers.some(
+                    (mod) => mod.kind === ts.SyntaxKind.PrivateKeyword
+                  )
+                ) {
+                  accessModifier = "private";
+                } else if (
+                  member.modifiers.some(
+                    (mod) => mod.kind === ts.SyntaxKind.ProtectedKeyword
+                  )
+                ) {
+                  accessModifier = "protected";
+                }
+                if (
+                  member.modifiers.some(
+                    (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword
+                  )
+                ) {
+                  accessModifier = "readonly";
+                }
+              } else if (member.name && /^_/.test(member.name.getText())) {
+                accessModifier = "protected";
+              }
+
+              const cleanName =
+                member.name?.getText()?.replace(/^[_#]/, "") || "unknown";
+
+              if (ts.isPropertyDeclaration(member)) {
+                const propertyName = cleanName;
+                const propertyType = member.type
+                  ? member.type.getText().trim()
+                  : "unknown";
+                const initializer = member.initializer
+                  ? member.initializer.getText().trim().replace(/['"]+/g, "")
+                  : null;
+                classMembers[propertyName] = {
+                  types: [propertyType],
+                  value: initializer,
+                  modificator: accessModifier,
+                };
+              } else if (ts.isMethodDeclaration(member)) {
+                const methodName = cleanName;
+                const methodParams = member.parameters.map((param) => ({
+                  name: param.name.getText(),
+                  type: param.type ? param.type.getText().trim() : "any",
+                }));
+                const returnType = checker
+                  .getTypeAtLocation(member)
+                  .getCallSignatures()[0]
+                  .getReturnType();
+                const returnTypeString = checker.typeToString(returnType);
+                const body = member.body?.getText(); // Добавляем тело метода
+                classMembers[methodName] = {
+                  types: ["function"],
+                  params: methodParams,
+                  returnResult: [returnTypeString],
+                  modificator: accessModifier,
+                  body, // Сохраняем тело метода
+                };
+              }
             }
           });
 
