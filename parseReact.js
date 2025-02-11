@@ -18,7 +18,7 @@ function parseReact(filePaths) {
       traverse(ast, {
         // Обработка переменных (только НЕ компоненты)
         VariableDeclarator(path) {
-          if (!isReactComponent(path)) {
+          if (!isArrowFunctionComponent(path)) {
             const varName = path.node.id.name;
             result.variables[varName] = {
               types: [getType(path.node.init)],
@@ -60,31 +60,48 @@ function isArrowFunctionComponent(path) {
   return (
     t.isVariableDeclarator(path.node) &&
     t.isArrowFunctionExpression(path.node.init) &&
-    t.isJSXElement(getReturnStatement(path.get('init')))
+    containsJSX(path.get('init'))
   );
+}
+
+// Проверка на JSX в теле функции
+function containsJSX(path) {
+  const returnStatement = getReturnStatement(path);
+  return t.isJSXElement(returnStatement) || t.isJSXFragment(returnStatement);
 }
 
 // Проверка на классовый компонент
 function isReactClassComponent(path) {
+  const superClass = path.node.superClass;
   return (
-    path.node.superClass?.name === 'Component' ||
-    path.node.superClass?.property?.name === 'Component'
+    (t.isIdentifier(superClass) && superClass.name === 'Component') ||
+    (t.isMemberExpression(superClass) && 
+     t.isIdentifier(superClass.object, { name: 'React' }) &&
+     t.isIdentifier(superClass.property, { name: 'Component' }))
   );
 }
 
 // Обработка стрелочных компонентов
 function processArrowComponent(path, code, result) {
   const componentName = path.node.id.name;
-  const componentCode = code.slice(path.node.start, path.node.end);
-  const returns = code.slice(
-    path.node.init.body.start,
-    path.node.init.body.end
-  );
+  const parentNode = path.parentPath.node; // Получаем VariableDeclaration
+  const componentCode = code.slice(parentNode.start, parentNode.end);
+  const arrowFunction = path.node.init;
+  const returns = getReturnJSXCode(arrowFunction.body, code);
 
   result.components[componentName] = {
     code: componentCode,
-    returns: returns.replace(/^\(|\)$/g, '').trim()
+    returns: returns
   };
+}
+
+// Извлечение JSX кода возврата
+function getReturnJSXCode(node, code) {
+  let currentNode = node;
+  while (t.isParenthesizedExpression(currentNode)) {
+    currentNode = currentNode.expression;
+  }
+  return code.slice(currentNode.start, currentNode.end);
 }
 
 // Обработка классовых компонентов
@@ -95,12 +112,13 @@ function processClassComponent(path, code, result) {
     t.isClassMethod(m) && m.key.name === 'render'
   );
   
-  const returns = renderMethod 
-    ? code.slice(
-        renderMethod.body.start,
-        renderMethod.body.end
-      ).replace(/^{|}$/g, '').trim()
-    : null;
+  let returns = '';
+  if (renderMethod) {
+    const renderBody = renderMethod.body;
+    returns = code.slice(renderBody.start, renderBody.end)
+      .replace(/^{|}$/g, '')
+      .trim();
+  }
 
   if (returns) {
     result.components[componentName] = {
@@ -112,7 +130,17 @@ function processClassComponent(path, code, result) {
 
 // Вспомогательные функции
 function getReturnStatement(path) {
-  return path.node.body?.body?.find(n => t.isReturnStatement(n))?.argument;
+  let body = path.get('body');
+  if (body.isBlockStatement()) {
+    const returnStmt = body.get('body').find(p => p.isReturnStatement());
+    return returnStmt ? returnStmt.get('argument').node : null;
+  } else {
+    let node = body.node;
+    while (t.isParenthesizedExpression(node)) {
+      node = node.expression;
+    }
+    return node;
+  }
 }
 
 function getType(node) {
