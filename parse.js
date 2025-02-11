@@ -247,29 +247,58 @@ function readTsFiles(filePaths) {
           break;
         case ts.SyntaxKind.FunctionDeclaration:
           const functionName = node.name.getText();
+          const existingFunction = allVariables.functions[functionName] || {};
+
+          // Парсинг параметров
           const params = node.parameters.map((param) => ({
             name: param.name.getText(),
             type: param.type ? param.type.getText().trim() : "any",
-            optional: !!param.questionToken, // Добавляем флаг optional
+            optional: !!param.questionToken,
+            defaultValue: param.initializer
+              ? param.initializer.getText().replace(/['"]+/g, "")
+              : null,
           }));
-          const returnType = checker
-            .getTypeAtLocation(node)
-            .getCallSignatures()[0]
-            .getReturnType();
-          const returnTypeString = checker.typeToString(returnType);
-          const body = node.body?.getText(); // Добавляем тело функции
-          const genericsTypes = node.typeParameters?.reduce(
-            (acc, el) => [...acc, el.getText()],
-            []
-          );
 
-          allVariables.functions[functionName] = {
-            types: ["function"],
-            genericsTypes,
-            params,
-            returnResult: [returnTypeString],
-            body, // Сохраняем тело функции
-          };
+          // Определение возвращаемого типа
+          let returnTypeString;
+          if (node.type) {
+            returnTypeString = node.type.getText().trim();
+          } else {
+            const signature = checker.getSignatureFromDeclaration(node);
+            returnTypeString = signature
+              ? checker.typeToString(signature.getReturnType())
+              : "void";
+          }
+
+          // Generics и тело функции
+          const genericsTypes = node.typeParameters
+            ? node.typeParameters.map((tp) => tp.getText().trim())
+            : [];
+          const body = node.body?.getText();
+
+          if (node.body) {
+            // Основная реализация функции
+            existingFunction.params = params;
+            existingFunction.returnResult = [returnTypeString];
+            existingFunction.genericsTypes = genericsTypes;
+            existingFunction.body = body;
+            existingFunction.types = ["function"];
+          } else {
+            // Добавление перегрузки
+            const overloadCount = Object.keys(existingFunction).filter((key) =>
+              key.startsWith("overload")
+            ).length;
+            const overloadKey = `overload${overloadCount}`;
+            existingFunction[overloadKey] = {
+              params,
+              returnResult: [returnTypeString],
+              genericsTypes,
+              body: null,
+            };
+          }
+
+          allVariables.functions[functionName] = existingFunction;
+          break;
           break;
         case ts.SyntaxKind.TypeAliasDeclaration:
           const typeName = node.name.getText();
@@ -444,7 +473,7 @@ function readTsFiles(filePaths) {
       }
     }
 
-    console.log("Все найденные элементы:", allVariables.classes);
+    console.log("Все найденные элементы:", allVariables);
     return allVariables;
   } catch (err) {
     console.error("Ошибка при чтении файлов:", err);

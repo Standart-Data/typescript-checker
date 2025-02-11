@@ -2,7 +2,7 @@ const { readTsFiles } = require("../../parse");
 const assert = require("assert");
 
 const allVariables = readTsFiles(["./main.ts"]);
-
+console.log(allVariables.functions['someFunc'])
 describe("Function Type Parsing Tests", function () {
   describe("Greeting Type", function () {
     it("Тип Greeting должен быть корректно обработан", function () {
@@ -45,13 +45,13 @@ describe("Function Type Parsing Tests", function () {
       // Проверка типа переменной
       assert.strictEqual(someFunc.types[0], "Greeting", "someFunc должен быть типа Greeting");
 
-      // Проверка свойств someFunc
+      // // Проверка свойств someFunc
       assert.ok(someFunc.defaultName.value, "someFunc должен иметь свойство defaultName");
       assert.strictEqual(someFunc.defaultName.value, "Func", "Свойство defaultName должно быть равно 'Func'");
 
       assert.ok(someFunc.setDefaultName.value, "someFunc должен иметь метод setDefaultName");
       assert.strictEqual(someFunc.setDefaultName.value, "(anotherName) => {}", "setDefaultName должно быть равно (anotherName) => {}");
-      assert.strictEqual(typeof someFunc.setDefaultName.types[0], "(anotherName: string) => void", "setDefaultName type должно быть равно function");
+      assert.strictEqual(someFunc.setDefaultName.types[0], "(anotherName: string) => void", "setDefaultName type должно быть равно function");
     });
   });
 });
