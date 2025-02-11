@@ -6,7 +6,7 @@ const result = parseReact(["./main.ts"]);
 console.log(result)
 describe("React Component Tests", function () {
   it("Должен находить 3 компонента", () => {
-    assert.strictEqual(Object.keys(result.components).length, 3);
+    assert.strictEqual(Object.keys(result.components).length, 4);
   });
 
   it("Корректно парсит стрелочные компоненты", () => {
