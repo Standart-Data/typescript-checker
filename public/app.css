@@ -19,6 +19,8 @@ body {
 
 .fit-content {width: fit-content;}
 
+/* Оформление условий задачи */
+
 #theExercise {
 
 }
@@ -56,6 +58,8 @@ body {
     display: none;
 }
 
+/* Редактор кода */
+
 #theEditor {
     height: calc(100vh - 88px);
 }
@@ -67,6 +71,8 @@ body {
 .CodeMirror { height: 100%; }
 
 #theEditor .CodeMirror-hscrollbar {left: 0; !important; }
+
+/* Результаты тестов */
 
 #theTestResults li {
     position: relative;
@@ -85,7 +91,6 @@ body {
     border-radius: 3px;
     box-sizing: border-box;
 }
-
 
 
 #theTestResults li.passed::before {
@@ -160,5 +165,4 @@ details {
 .icon-message{ background-image: url("/assets/icon-message.svg"); }
 .icon-chevron{ background-image: url("/assets/icon-chevron.svg"); }
 
-/* Вкладки */
-
+/* Адаптивность  */
