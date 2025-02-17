@@ -81,6 +81,49 @@ app.post('/parse', (req, res) => {
 });
 
 
-    app.listen(port, () => {
+
+
+app.post('/check/ts', (req, res) => {
+
+    let result = {};
+    let parsed = {};
+    let errors = []
+
+    const requestData = req.body;
+    const mainTsContent = requestData["main.ts"];
+
+    // Здесь валидируем код
+
+    const processor = new TSProcessor(mainTsContent)
+    processor.validate()
+    errors = processor.errors
+
+    // Здесь процессим – вытаскиваем результат и ошибки
+    
+    if (errors.length === 0) { // Only process if validation passes
+        processor.process();
+        result = { "main.js": processor.result };
+    }
+
+    // Здесь парсим – вытаскиваем структуру
+
+    const files = req.body;
+
+    for (const [filename, filecontent] of Object.entries(files)) {
+        const tempFilePath = createTempFileWithContent(filecontent);
+        parsed[filename] = readTsFiles([tempFilePath])
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ errors: errors, result: result, parsed: parsed });
+});
+
+
+
+
+
+
+
+app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
