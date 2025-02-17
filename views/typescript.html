@@ -171,7 +171,7 @@
         Запустить и проверить
     </button>
 
-    {{#if (eq errors.length 0)}}
+
 
     {{#if completed}}
         <section class="tabs grid bg-[#3FC39E] text-[#ffffff]] font-bold">
@@ -203,18 +203,7 @@
             {{/each}}
         </ul>
 
-    {{else}}
-        <section class="tabs grid  bg-[#EFEFEF] text-[#201e2e]] font-bold">
-            <div class="tab-active bg-[#F4F5F8] px-5 py-4">
-                <p class="">Ошибки в коде</p>
-            </div>
-        </section>
 
-        <div class="px-5 py-4">
-            <p>Проверка не запущена, так как код не выполнился из-за ошибок. Внесите изменения и запустите повторно!</p>
-        </div>
-
-    {{/if}}
 
 </template>
 

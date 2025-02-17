@@ -42,7 +42,7 @@ app.get('/load/:taskID', async (req, res) => {
     }
 })
 
-
+// DEPRECATED
 app.post('/validate', (req, res) => {
 
     const requestData = req.body;
@@ -54,6 +54,7 @@ app.post('/validate', (req, res) => {
 
 })
 
+// DEPRECATED
 app.post('/process', (req, res) => {
 
     const requestData = req.body;
@@ -64,8 +65,9 @@ app.post('/process', (req, res) => {
 
 })
 
-
+// DEPRECATED
 app.post('/parse', (req, res) => {
+
 
     const files = req.body;
     const result = {};
@@ -86,7 +88,7 @@ app.post('/parse', (req, res) => {
 app.post('/check/ts', (req, res) => {
 
     let result = {};
-    let parsed = {};
+    let metadata = {};
     let errors = []
 
     const requestData = req.body;
@@ -99,7 +101,7 @@ app.post('/check/ts', (req, res) => {
     errors = processor.errors
 
     // Здесь процессим – вытаскиваем результат и ошибки
-    
+
     if (errors.length === 0) { // Only process if validation passes
         processor.process();
         result = { "main.js": processor.result };
@@ -111,11 +113,11 @@ app.post('/check/ts', (req, res) => {
 
     for (const [filename, filecontent] of Object.entries(files)) {
         const tempFilePath = createTempFileWithContent(filecontent);
-        parsed[filename] = readTsFiles([tempFilePath])
+        metadata[filename] = readTsFiles([tempFilePath])
     }
 
     res.setHeader('Content-Type', 'application/json');
-    res.json({ errors: errors, result: result, parsed: parsed });
+    res.json({ errors: errors, result: result, metadata: metadata });
 });
 
 
