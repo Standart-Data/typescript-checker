@@ -63,14 +63,10 @@ class App {
 
         console.log("Запускаем выполнение упражнения")
 
-        this.indicateProcess("run")
         this.indicateProcess("check")
 
         const editorValue = this.getEditorValues()
-
         await this.task.check(editorValue)
-
-        console.log(this.task.output)
 
         const responseJS = this.task.output["main.js"];
         const srcdoc = `<script>${responseJS}</script>`
@@ -78,18 +74,13 @@ class App {
         this.components.output.update({"code": responseJS, errors: this.task.errors, srcdoc: srcdoc})
         this.components.testResults.update({errors: this.errors, tests: this.tests})
 
-        const domDocument = document.querySelector("#output__iframe")
+        setTimeout(async ()=> {
 
-        const context = {
-            allVariables: this.task.metadata["main.ts"],
-            dom: domDocument.contentWindow || domDocument.contentDocument.defaultView,
-            editor: {"main.ts": this.getEditorValues()},
-            fetch: () => {}
-        }
+            await this.runTests()
+            this.components.testResults.update({tests: this.testResults, errors: this.task.errors, completed: this.completed})
 
-        await this.runTests()
+        }, 200)
 
-        this.components.testResults.update({tests: this.testResults, errors: this.task.errors, completed: this.completed})
 
     }
 
@@ -109,6 +100,8 @@ class App {
         const result = await this.testRunner.run(this.task.tests, context)
         this.testResults = result.tests
         this.completed = this.testResults.every(t => t.passed);
+
+
     }
 
 
@@ -118,7 +111,6 @@ class App {
         const button = document.querySelector("#checkbutton")
         if (!button){return }
 
-        if (processName==="run") {button.innerHTML = "Запускаем ..."}
         if (processName==="check") {button.innerHTML = "Проверяем ..."}
 
     }
