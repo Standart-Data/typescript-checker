@@ -87,8 +87,6 @@ class App {
             fetch: () => {}
         }
 
-        this.completed = this.tests.every(t => t.passed);
-
         await this.runTests()
 
         this.components.testResults.update({tests: this.testResults, errors: this.task.errors, completed: this.completed})
@@ -110,7 +108,7 @@ class App {
 
         const result = await this.testRunner.run(this.task.tests, context)
         this.testResults = result.tests
-        this.completed = this.tests.every(t => t.passed);
+        this.completed = this.testResults.every(t => t.passed);
     }
 
 

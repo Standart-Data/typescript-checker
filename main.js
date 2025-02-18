@@ -83,8 +83,6 @@ app.post('/parse', (req, res) => {
 });
 
 
-
-
 app.post('/check/ts', (req, res) => {
 
     let result = {};
@@ -100,7 +98,7 @@ app.post('/check/ts', (req, res) => {
     processor.validate()
     errors = processor.errors
 
-    // Здесь процессим – вытаскиваем результат и ошибки
+    // Здесь вытаскиваем результат и ошибки
 
     if (errors.length === 0) { // Only process if validation passes
         processor.process();
