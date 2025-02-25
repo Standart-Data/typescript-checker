@@ -22,7 +22,7 @@ app.set('view engine', 'handlebars');
 app.set('views', './views'); // Make sure this path is correct
 
 
-app.get('/:taskID', async (req, res) => {
+app.get('/ts/:taskID', async (req, res) => {
     try {
         const exerciseData = await loadExercise(req.params.taskID)
         res.sendFile('typescript.html', { root: join(__dirname, 'views') }); // Relative path
