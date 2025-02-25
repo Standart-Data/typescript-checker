@@ -21,7 +21,7 @@ app.engine('handlebars', handlebars.engine()); // or just handlebars()
 app.set('view engine', 'handlebars');
 app.set('views', './views'); // Make sure this path is correct
 
-// test 1
+// test 2
 app.get('/ts/:taskID', async (req, res) => {
     try {
         const exerciseData = await loadExercise(req.params.taskID)
