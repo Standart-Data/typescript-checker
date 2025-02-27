@@ -42,7 +42,7 @@ app.get('/load/:taskID', async (req, res) => {
     }
 })
 
-
+// DEPRECATED
 app.post('/validate', (req, res) => {
 
     const requestData = req.body;
@@ -54,6 +54,7 @@ app.post('/validate', (req, res) => {
 
 })
 
+// DEPRECATED
 app.post('/process', (req, res) => {
 
     const requestData = req.body;
@@ -64,8 +65,9 @@ app.post('/process', (req, res) => {
 
 })
 
-
+// DEPRECATED
 app.post('/parse', (req, res) => {
+
 
     const files = req.body;
     const result = {};
@@ -81,6 +83,47 @@ app.post('/parse', (req, res) => {
 });
 
 
-    app.listen(port, () => {
+app.post('/check/ts', (req, res) => {
+
+    let result = {};
+    let metadata = {};
+    let errors = []
+
+    const requestData = req.body;
+    const mainTsContent = requestData["main.ts"];
+
+    // Здесь валидируем код
+
+    const processor = new TSProcessor(mainTsContent)
+    processor.validate()
+    errors = processor.errors
+
+    // Здесь вытаскиваем результат и ошибки
+
+    if (errors.length === 0) { // Only process if validation passes
+        processor.process();
+        result = { "main.js": processor.result };
+    }
+
+    // Здесь парсим – вытаскиваем структуру
+
+    const files = req.body;
+
+    for (const [filename, filecontent] of Object.entries(files)) {
+        const tempFilePath = createTempFileWithContent(filecontent);
+        metadata[filename] = readTsFiles([tempFilePath])
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ errors: errors, result: result, metadata: metadata });
+});
+
+
+
+
+
+
+
+app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });

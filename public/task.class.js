@@ -16,10 +16,13 @@ class TaskState {
 class Task {
 
     constructor(id) {
+
         this.id = id
+
         this.data = {}
         this.errors = []
         this.output = {}
+
         this.testResults = null
         this.state = new TaskState()
     }
@@ -52,72 +55,99 @@ class Task {
         return this
     }
 
-    async validate(solution) {
+    // async validate(solution) {
+    //
+    //     try {
+    //
+    //         const response = await fetch(`${BASE_URL}/validate`, {
+    //             method: "POST",
+    //             body: JSON.stringify({"main.ts": solution}),
+    //             headers: { "Content-type": "application/json"  }
+    //         });
+    //
+    //         if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
+    //         this.errors = await response.json();
+    //         console.log(this.errors)
+    //         return this.errors
+    //
+    //     } catch (error) {
+    //         console.error("Ошибка загрузки данных:", error);
+    //         this.state.transition("error", error);
+    //     }
+    //
+    //     return this.errors
+    // }
+
+
+    // async process(solution) {
+    //
+    //     try {
+    //
+    //         const response = await fetch(`${BASE_URL}/process`, {
+    //             method: "POST",
+    //             body: JSON.stringify({"main.ts": solution}),
+    //             headers: { "Content-type": "application/json"  }
+    //         });
+    //
+    //         if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
+    //         this.errors = await response.json();
+    //         console.log(this.errors)
+    //         return this.errors
+    //
+    //     } catch (error) {
+    //         console.error("Ошибка загрузки данных:", error);
+    //         this.state.transition("error", error);
+    //     }
+    //
+    //     return this.errors
+    // }
+
+    async check(solution){
 
         try {
 
-            const response = await fetch(`${BASE_URL}/validate`, {
+            const response = await fetch(`${BASE_URL}/check/ts`, {
                 method: "POST",
                 body: JSON.stringify({"main.ts": solution}),
                 headers: { "Content-type": "application/json"  }
             });
 
-            if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
-            this.errors = await response.json();
-            console.log(this.errors)
-            return this.errors
+            const responseData = await response.json()
+
+            console.log(responseData)
+
+            this.errors = responseData.errors
+            this.output = responseData.result
+            this.metadata = responseData.metadata
 
         } catch (error) {
+
             console.error("Ошибка загрузки данных:", error);
             this.state.transition("error", error);
+
         }
 
-        return this.errors
     }
 
-
-    async process(solution) {
-
-        try {
-
-            const response = await fetch(`${BASE_URL}/process`, {
-                method: "POST",
-                body: JSON.stringify({"main.ts": solution}),
-                headers: { "Content-type": "application/json"  }
-            });
-
-            if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
-            this.errors = await response.json();
-            console.log(this.errors)
-            return this.errors
-
-        } catch (error) {
-            console.error("Ошибка загрузки данных:", error);
-            this.state.transition("error", error);
-        }
-
-        return this.errors
-    }
-
-    async parseUserCode(solution){
-
-        const response = await fetch(`${BASE_URL}/parse`, {
-            method: "POST",
-            body: JSON.stringify({"main.ts": solution}),
-            headers: { "Content-type": "application/json"  }
-        });
-
-        if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
-
-        const allVariables = await response.json();
-
-        console.log("allVariables")
-        console.log(allVariables)
-
-        return allVariables
-
-
-    }
+    // async parseUserCode(solution){
+    //
+    //     const response = await fetch(`${BASE_URL}/parse`, {
+    //         method: "POST",
+    //         body: JSON.stringify({"main.ts": solution}),
+    //         headers: { "Content-type": "application/json"  }
+    //     });
+    //
+    //     if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
+    //
+    //     const allVariables = await response.json();
+    //
+    //     console.log("allVariables")
+    //     console.log(allVariables)
+    //
+    //     return allVariables
+    //
+    //
+    // }
 
 
 }

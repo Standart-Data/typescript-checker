@@ -19,8 +19,14 @@ body {
 
 .fit-content {width: fit-content;}
 
-#theExercise {
+/* Типографика */
 
+#theExercise p{
+    margin: 1rem 0;
+}
+
+#theExercise code {
+    margin: 1rem 0;
 }
 
 #theExercise pre{
@@ -44,6 +50,11 @@ body {
     border-radius: 6px;
     color: #1da69e;
     text-decoration: none;
+}
+
+#theExercise ul li{
+    padding-left: 0px;
+    list-style-type: square;
 }
 
 #theOutput pre {

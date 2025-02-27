@@ -55,7 +55,7 @@ class TestRunner {
             results.tests.push({
                 title: test.title,
                 suite: test.parent.title,
-                passed: test.isPassed(), // Should be false in case of failure
+                passed: test.isPassed(),
                 err: {
                     message: err.message,
                     stack: err.stack,

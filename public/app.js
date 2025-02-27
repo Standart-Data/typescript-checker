@@ -57,62 +57,36 @@ class App {
 
     }
 
-    async run() {
 
-        console.log("Запускаем выполнение упражнения")
-
-        const editorValue = this.getEditorValues()
-        this.errors = await this.task.validate(editorValue)
-
-        if (this.errors.length > 0) {
-            this.components.output.update({errors: this.errors})
-            this.components.testResults.update({tests: this.tests, completed: this.completed, errors: this.errors, })
-            return
-        }
-
-        const responseAllFiles = await this.task.process(editorValue)
-        const responseJS = responseAllFiles["main.js"];
-
-        const srcdoc = `<script>${responseJS}</script>`
-
-        this.components.output.update({"code": responseJS, errors: this.errors, srcdoc: srcdoc})
-        this.components.testResults.update({errors: this.errors, tests: this.tests})
-
-    }
-
-    async parse(){
-
-        const editorValue = this.getEditorValues()
-        return await this.task.parseUserCode(editorValue)
-
-    }
 
     async check() {
 
-
-        this.indicateProcess("run")
-        await this.run()
+        console.log("Запускаем выполнение упражнения")
 
         this.indicateProcess("check")
-        await this.runTests()
 
-        this.components.testResults.update({tests: this.tests, errors: this.errors, completed: this.completed})
+        const editorValue = this.getEditorValues()
+        await this.task.check(editorValue)
 
-    }
+        const responseJS = this.task.output["main.js"];
+        const srcdoc = `<script>${responseJS}</script>`
 
-    indicateProcess(processName){
+        this.components.output.update({"code": responseJS, errors: this.task.errors, srcdoc: srcdoc})
+        this.components.testResults.update({errors: this.errors, tests: this.tests})
 
-        const button = document.querySelector("#checkbutton")
-        if (!button){return }
+        setTimeout(async ()=> {
 
-        if (processName==="run") {button.innerHTML = "Запускаем ..."}
-        if (processName==="check") {button.innerHTML = "Проверяем ..."}
+            await this.runTests()
+            this.components.testResults.update({tests: this.testResults, errors: this.task.errors, completed: this.completed})
+
+        }, 200)
+
 
     }
 
     async runTests(){
 
-        const allVariables = await this.parse()
+        const allVariables = this.task.metadata
 
         const domDocument = document.querySelector("#output__iframe")
 
@@ -124,11 +98,25 @@ class App {
         }
 
         const result = await this.testRunner.run(this.task.tests, context)
-        this.tests = result.tests
-        this.completed = this.tests.every(t => t.passed);
-    }
-}
+        this.testResults = result.tests
+        this.completed = this.testResults.every(t => t.passed);
 
+
+    }
+
+
+    // TODO Это заплатка, ее над бы выпилить
+    indicateProcess(processName){
+
+        const button = document.querySelector("#checkbutton")
+        if (!button){return }
+
+        if (processName==="check") {button.innerHTML = "Проверяем ..."}
+
+    }
+
+
+}
 
 
 
