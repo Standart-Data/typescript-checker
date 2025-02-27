@@ -25,6 +25,10 @@ class Task {
 
         this.testResults = null
         this.state = new TaskState()
+
+        this.confirmationCode = "NOCODE"
+
+
     }
 
     get tests(){
@@ -33,6 +37,13 @@ class Task {
 
     get fields() {
         return this.data.fields
+    }
+
+
+    generateCode(inputString) {
+        const hash = CryptoJS.MD5(inputString).toString();
+        const shortCode = hash.slice(-6);
+        return shortCode;
     }
 
     async load(){
@@ -45,6 +56,8 @@ class Task {
             const response = await fetch(url);
             if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`);}
             this.data = await response.json(); // Присваиваем загруженные данные свойству data
+
+            this.confirmationCode = this.generateCode(this.data.strange_word+this.data.name)
 
             this.state.transition("loaded");
 

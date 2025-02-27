@@ -6,7 +6,7 @@ class App {
 
         this.task = new Task(taskID)
         this.errors = []
-        this.completed = []
+        this.completed = false
         this.tests = []
 
         this.components = {
@@ -58,7 +58,6 @@ class App {
     }
 
 
-
     async check() {
 
         console.log("Запускаем выполнение упражнения")
@@ -72,12 +71,12 @@ class App {
         const srcdoc = `<script>${responseJS}</script>`
 
         this.components.output.update({"code": responseJS, errors: this.task.errors, srcdoc: srcdoc})
-        this.components.testResults.update({errors: this.errors, tests: this.tests})
+        this.components.testResults.update({errors: this.errors, tests: this.tests, task: this.task})
 
         setTimeout(async ()=> {
 
             await this.runTests()
-            this.components.testResults.update({tests: this.testResults, errors: this.task.errors, completed: this.completed})
+            this.components.testResults.update({tests: this.testResults, errors: this.task.errors, completed: this.completed, task: this.task})
 
         }, 200)
 
@@ -99,7 +98,7 @@ class App {
 
         const result = await this.testRunner.run(this.task.tests, context)
         this.testResults = result.tests
-        this.completed = this.testResults.every(t => t.passed);
+        this.completed = this.testResults.every(t => t.passed) && this.task.errors.length === 0;
 
 
     }
@@ -174,7 +173,6 @@ class ResizableColumns {
             newLeftWidth = Math.max(minWidth, Math.min(maxWidth, newLeftWidth));
             newMiddleWidth = Math.max(minWidth, Math.min(maxWidth - newLeftWidth, newMiddleWidth));
 
-            // console.log( this.leftColumn.offsetWidth+ this.middleColumn.offsetWidth)
 
             this.leftColumn.style.width = newLeftWidth + "px";
             this.middleColumn.style.width = newMiddleWidth + "px";
@@ -185,8 +183,6 @@ class ResizableColumns {
             const maxWidth = this.container.offsetWidth - minWidth * 2 - 20 - this.leftColumn.offsetWidth; // 20 - ширина разделителей
             newMiddleWidth = Math.max(minWidth, Math.min(maxWidth, newMiddleWidth));
             this.middleColumn.style.width = newMiddleWidth + "px";
-
-            // console.log( this.rightColumn.offsetWidth+ this.middleColumn.offsetWidth)
 
         }
 
