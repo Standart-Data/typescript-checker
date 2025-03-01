@@ -1,6 +1,6 @@
 const http = require('http');
 
-TSBASEURL = "http://5.53.125.217/api/tstask/"
+TSBASEURL = "https://frontend-validator.atdcode.ru/api/tstask/"
 
 async function loadExercise(taskID) {
 
