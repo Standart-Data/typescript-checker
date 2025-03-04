@@ -7,7 +7,8 @@ class App {
         this.task = new Task(taskID)
         this.errors = []
         this.completed = false
-        this.tests = []
+        this.tests = []  // тесты сплошным списком
+        this.groupedTests = []  // Тесты сгрупированные по сюитам
 
         this.components = {
 
@@ -71,12 +72,12 @@ class App {
         const srcdoc = `<script>${responseJS}</script>`
 
         this.components.output.update({"code": responseJS, errors: this.task.errors, srcdoc: srcdoc})
-        this.components.testResults.update({errors: this.errors, tests: this.tests, task: this.task})
+        // this.components.testResults.update({errors: this.errors, tests: this.testResults,  feedback: this.groupedTests, task: this.task})
 
         setTimeout(async ()=> {
 
             await this.runTests()
-            this.components.testResults.update({tests: this.testResults, errors: this.task.errors, completed: this.completed, task: this.task})
+            this.components.testResults.update({tests: this.testResults, errors: this.task.errors, feedback: this.groupedTests, completed: this.completed, task: this.task})
 
         }, 200)
 
@@ -98,9 +99,25 @@ class App {
 
         const result = await this.testRunner.run(this.task.tests, context)
         this.testResults = result.tests
+        this.groupedTests = this.groupTests(this.testResults);
         this.completed = this.testResults.every(t => t.passed) && this.task.errors.length === 0;
 
+    }
 
+    groupTests(tests) {
+
+        return Object.values(tests.reduce((acc, test) => {
+
+            if (!acc[test.suite]) {
+                acc[test.suite] = {
+                    suite: test.suite,
+                    tests: []
+                };
+            }
+
+            acc[test.suite].tests.push(test);
+            return acc;
+        }, {}));
     }
 
 
