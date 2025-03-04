@@ -194,15 +194,32 @@
 
         <section class="h-full overflow-scroll">
         <ul class="p-5">
-            {{#each tests}}
+
+
+            {{#each feedback}}
+
+                <p class="text-slate-500 mb-2">{{this.suite}}</p>
+
+                {{#each this.tests}}
+
+                {{feedback.0.title}}
 
                 {{#if this.passed}}
-                <li class="passed mb-3 text-[#3ba68c] font-bold" > {{this.title}} </li>
+                <div class="passed mb-2 ">
+                    <li class="passed mb-3 text-[#3ba68c] font-bold" > {{this.title}} </li>
+                </div>
                 {{else}}
-                <li class="mb-3">{{this.title}}</li>
+                <div class="failed mb-2">
+                    <li class="mb-3">{{this.title}}</li>
+                </div>
                 {{/if}}
 
+                {{/each}}
+
             {{/each}}
+
+
+
         </ul>
         </section>
 
