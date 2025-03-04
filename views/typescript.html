@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/mocha@11.0.0/mocha.js"></script>
 
     <script src="https://unpkg.com/@tailwindcss/browser@4" ></script>
-    <script src="https://kit.fontawesome.com/eb1186874f.js" crossorigin="anonymous"></script>
+    <script src="/assets/crypto-js.min.js"></script>
 
     <link rel="stylesheet" href="/app.css">
 </head>
@@ -177,7 +177,7 @@
 
         <section class="tabs grid bg-[#3FC39E] text-[#ffffff]] font-bold">
             <div class="tab-active px-5 py-4  bg-[#F4F5F8]" >
-                 <p class="">Задание выполнено! Код IDKFA</p>
+                 <p class="">Задание выполнено! Код {{task.confirmationCode}}</p>
             </div>
         </section>
 
@@ -194,15 +194,32 @@
 
         <section class="h-full overflow-scroll">
         <ul class="p-5">
-            {{#each tests}}
+
+
+            {{#each feedback}}
+
+                <p class="text-slate-500 mb-2">{{this.suite}}</p>
+
+                {{#each this.tests}}
+
+                {{feedback.0.title}}
 
                 {{#if this.passed}}
-                <li class="passed mb-3 text-[#3ba68c] font-bold" > {{this.title}} </li>
+                <div class="passed mb-2 ">
+                    <li class="passed mb-3 text-[#3ba68c] font-bold" > {{this.title}} </li>
+                </div>
                 {{else}}
-                <li class="mb-3">{{this.title}}</li>
+                <div class="failed mb-2">
+                    <li class="mb-3">{{this.title}}</li>
+                </div>
                 {{/if}}
 
+                {{/each}}
+
             {{/each}}
+
+
+
         </ul>
         </section>
 
