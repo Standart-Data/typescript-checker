@@ -4,6 +4,7 @@ class App {
 
     constructor(taskID, taskType="TS"){
 
+        this.taskID = taskID
         this.task = new Task(taskID)
         this.errors = []
         this.completed = false
@@ -32,7 +33,16 @@ class App {
         this.components.output.update({"code": "// запустите, чтобы посмотреть"})
         this.components.exercise.update({"exercise": this.task.data})
 
-        this.components.editor.update({"fields": this.task.fields})
+        const localSaved = this.loadFromLocalStorage()
+        if (localSaved) {
+            const localData = [{"value": localSaved, "file_name": "index.ts"}]
+            this.components.editor.update({"fields": localData})
+        } else {
+            this.components.editor.update({"fields": this.task.fields})
+        }
+
+        console.log(this.task.fields)
+
         this.highlightEditor()
 
         await this.check()
@@ -64,6 +74,8 @@ class App {
         console.log("Запускаем выполнение упражнения")
 
         this.indicateProcess("check")
+
+        this.saveToLocalStorage()
 
         const editorValue = this.getEditorValues()
         await this.task.check(editorValue)
@@ -119,6 +131,28 @@ class App {
             return acc;
         }, {}));
     }
+
+    loadFromLocalStorage(){
+        try {
+            const content = localStorage.getItem(this.taskID);
+            return content;
+
+        } catch (error) {
+            console.error(`Ошибка при загрузке из localStorage:`, error);
+            return null;
+        }
+    }
+
+    saveToLocalStorage() {
+        try {
+            localStorage.setItem(this.taskID, this.getEditorValues());
+            console.log(`Код успешно сохранен в localStorage.`);
+        } catch (error) {
+            console.error(`Ошибка при сохранении в localStorage:`, error);
+        }
+    }
+
+
 
 
     // TODO Это заплатка, ее над бы выпилить
