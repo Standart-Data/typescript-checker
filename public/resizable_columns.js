@@ -95,7 +95,7 @@ class ResizableColumns {
             return
         }
 
-        if (containerWidth >= 640 && containerWidth < 1280 ) {
+        if (containerWidth >= 640 && containerWidth < 1024 ) {
 
             const initialWidth = (containerWidth - (this.resizerWidth + 5 )) / 2;
 
@@ -114,8 +114,6 @@ class ResizableColumns {
 
         this.resizerLeft.style.display = "Block"
         this.resizerRight.style.display = "Block"
-
-        console.log(`Container ${containerWidth} Outer resized`)
 
     }
 
