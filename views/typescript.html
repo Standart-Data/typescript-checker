@@ -167,34 +167,36 @@
 
 <template  id="testResults">
 
-    <button id="checkbutton" onclick="app.check()" class="absolute right-3 top-2 bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" >
-        Запустить и проверить
-    </button>
 
+
+    <section class="tabs flex flex-wrap items-center bg-[#EFEFEF] text-[#201e2e]] font-bold">
+
+        <div class="">
+            <div class="tab-active  bg-[#F4F5F8] px-5 py-4">
+                <span>Выполнено {{countTrue tests "passed"}} из {{tests.length}}</span>
+            </div>
+        </div>
+        <!-- /.1/2 -->
+        <div class=" pl-4">
+            <button id="checkbutton" onclick="app.check()" class="w-full bg-[#3CC39E] text-white px-4 py-2 my-2 rounded-lg cursor-pointer" >
+                Запустить и проверить
+            </button>
+        </div>
+
+    </section>
 
 
     {{#if completed}}
 
-        <section class="tabs grid bg-[#3FC39E] text-[#ffffff]] font-bold">
-            <div class="tab-active px-5 py-4  bg-[#F4F5F8]" >
-                 <p class="">Задание выполнено! Код {{task.confirmationCode}}</p>
-            </div>
-        </section>
-
-     {{else}}
-
-        <section class="tabs  bg-[#EFEFEF] text-[#201e2e]] font-bold">
-            <div class="tab-active  bg-[#F4F5F8] px-5 py-4 inline-flex items-center">
-                <i class="icon icon-check"></i>
-                <span>Выполнено {{countTrue tests "passed"}} из {{tests.length}}</span>
-            </div>
-        </section>
+    <div class="rounded-xl bg-[#3CC39E] mx-4 mt-4 p-4 ">
+        Задача выполнена! Код
+        <span class="inline-block rounded bg-teal-600 px-1 text-white"> {{task.confirmationCode}} </span>
+    </div>
 
      {{/if}}
 
         <section class="h-full overflow-scroll">
         <ul class="p-5">
-
 
             {{#each feedback}}
 
