@@ -168,18 +168,22 @@ class App {
 }
 
 
-
-
-
-
 class ResizableColumns {
     constructor(container, leftColumn, middleColumn, rightColumn, resizerLeft, resizerRight) {
+
         this.container = container;
+
         this.leftColumn = leftColumn;
         this.middleColumn = middleColumn;
         this.rightColumn = rightColumn;
+
         this.resizerLeft = resizerLeft;
         this.resizerRight = resizerRight;
+
+        this.deltaOne = 0;
+        this.deltaTwo = 0;
+
+        this.resizerWidth = 20;
 
         this.isResizing = false;
         this.currentX = 0;
@@ -209,34 +213,35 @@ class ResizableColumns {
     }
 
     resizing(e) {
+
         if (!this.isResizing) return;
 
-        const deltaX = e.clientX - this.currentX;
-        let newLeftWidth, newMiddleWidth;
+
+        let newLeftWidth, newMiddleWidth, newRightWidth;
 
         if (this.currentResizer === this.resizerLeft) {
-            newLeftWidth = this.initialWidths.left + deltaX;
-            newMiddleWidth = this.initialWidths.middle - deltaX;
 
-            const minWidth = 100;
-            const maxWidth = this.container.offsetWidth - minWidth * 2 - 20; // 20 - ширина разделителей
-            newLeftWidth = Math.max(minWidth, Math.min(maxWidth, newLeftWidth));
-            newMiddleWidth = Math.max(minWidth, Math.min(maxWidth - newLeftWidth, newMiddleWidth));
+            this.deltaOne = e.clientX - this.currentX;
 
+            newLeftWidth = this.initialWidths.left + this.deltaOne;
+            newMiddleWidth = this.initialWidths.middle - this.deltaOne;
 
             this.leftColumn.style.width = newLeftWidth + "px";
             this.middleColumn.style.width = newMiddleWidth + "px";
-        } else if (this.currentResizer === this.resizerRight) {
-            newMiddleWidth = this.initialWidths.middle + deltaX;
 
-            const minWidth = 100;
-            const maxWidth = this.container.offsetWidth - minWidth * 2 - 20 - this.leftColumn.offsetWidth; // 20 - ширина разделителей
-            newMiddleWidth = Math.max(minWidth, Math.min(maxWidth, newMiddleWidth));
+
+        } else if (this.currentResizer === this.resizerRight) {
+
+            this.deltaTwo = e.clientX - this.currentX;
+
+            newMiddleWidth = this.initialWidths.middle + this.deltaTwo;
+            newRightWidth = this.initialWidths.right - this.deltaTwo;
+
             this.middleColumn.style.width = newMiddleWidth + "px";
+            this.rightColumn.style.width = newRightWidth + "px";
 
         }
 
-        this.rightColumn.style.width = this.container.offsetWidth - this.leftColumn.offsetWidth - this.middleColumn.offsetWidth - 20 + "px";
     }
 
     endResizing() {
@@ -245,19 +250,47 @@ class ResizableColumns {
     }
 
     setInitialWidths() {
-        const initialWidth = this.container.offsetWidth / 3;
+
+        const containerWidth = this.container.offsetWidth
+
+        if (containerWidth < 640) {
+
+            this.leftColumn.style.width = "100%";
+            this.middleColumn.style.width  = "100%";
+            this.rightColumn.style.width  = "100%";
+
+            this.resizerLeft.style.display = "None"
+            this.resizerRight.style.display = "None"
+
+            return
+        }
+
+        if (containerWidth >= 640 && containerWidth < 1280 ) {
+
+            const initialWidth = (containerWidth - (this.resizerWidth + 5 )) / 2;
+
+            this.leftColumn.style.width = initialWidth + "px";
+            this.middleColumn.style.width  = initialWidth + "px";
+
+            this.resizerLeft.style.display = "Block"
+            this.resizerRight.style.display = "None"
+            return
+        }
+
+        const initialWidth = (containerWidth - (this.resizerWidth*2 + 5)) / 3;
         this.leftColumn.style.width = initialWidth + "px";
         this.middleColumn.style.width = initialWidth + "px";
         this.rightColumn.style.width = initialWidth + "px";
+
+        this.resizerLeft.style.display = "Block"
+        this.resizerRight.style.display = "Block"
+
+        console.log(`Container ${containerWidth} Outer resized`)
+
     }
 
     resizeHandler() {
-        const currentWidth = this.container.offsetWidth;
-        const initialWidth = currentWidth / 3;
-
-        this.leftColumn.style.width = initialWidth + "px";
-        this.middleColumn.style.width = initialWidth + "px";
-        this.rightColumn.style.width = initialWidth + "px";
+        this.setInitialWidths()
     }
 }
 
