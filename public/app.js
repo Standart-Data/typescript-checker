@@ -55,6 +55,7 @@ class App {
 
         this.components.editor.refs["ide"] = CodeMirror.fromTextArea(ideNode, {
             lineNumbers: true,
+            lineWrapping: true,
             matchBrackets: true,
             mode: "javascript", // Or "typescript" if you have the relevant files locally
             theme: "material-darker"
@@ -108,6 +109,9 @@ class App {
             editor: {"main.ts": this.getEditorValues()},
             fetch: () => {}
         }
+
+        console.log("All global This Objects")
+        console.log(domDocument.contentWindow.globalThis)
 
         const result = await this.testRunner.run(this.task.tests, context)
         this.testResults = result.tests
