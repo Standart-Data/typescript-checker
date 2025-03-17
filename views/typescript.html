@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Web App</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/material-darker.min.css">
+    <title>Loading ...</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
-    <script src="https://cdn.jsdelivr.net/npm/typescript@5.4.2/lib/typescript.js"></script>
+    <link rel="stylesheet" href="/libs/cm/codemirror_665.min.css">
+    <link rel="stylesheet" href="/libs/cm/material-darker.min.css">
 
-    <script src="https://unpkg.com/chai@4.5.0/chai.js"></script>
-    <script src="https://unpkg.com/mocha@11.0.0/mocha.js"></script>
+    <script src="/libs/cm/codemirror_665.min.js"></script>
+    <script src="/libs/cm_javascript.js"></script>
+    <script src="/libs/handlebars.min.js" ></script>
 
-    <script src="https://unpkg.com/@tailwindcss/browser@4" ></script>
-    <script src="/assets/crypto-js.min.js"></script>
+    <script src="/libs/chai.js"></script>
+    <script src="/libs/mocha.js"></script>
+
+    <script src="/libs/tailwind_browser.js" ></script>
+    <script src="/libs/crypto-js.min.js"></script>
+    <script src="/resizable_columns.js"></script>
 
     <link rel="stylesheet" href="/app.css">
 </head>
@@ -38,20 +42,17 @@
 
     <!-- Правая колонка   -->
 
-    <div class="column-right h-screen grid grid-rows-[auto_1fr] shadow-lg">
+    <div class="column-right h-screen grid grid-rows-[auto_1fr]">
 
-        <div class="card rounded-xl overflow-hidden font-bold">
+        <div class=" card  rounded-xl overflow-hidden relative  shadow-lg">
+            <div id="theTestResults" ><!-- Здесь загрузятся результаты тестов --> </div>
+        </div>
+
+        <div class="mt-4 card rounded-xl overflow-hidden   shadow-lg">
             <section id="theOutput" class="">  <!-- Здесь загрузятся вывод --> </section>
             <section id="theConsole" class="p-5 "> <!-- Здесь загрузятся консоль --> </section>
         </div>
 
-        <div class="mt-3 card  rounded-xl overflow-hidden relative">
-
-            <div id="theTestResults" >
-                <!-- Здесь загрузятся результаты тестов -->
-            </div>
-
-        </div>
     </div>
 </div>
 
@@ -132,15 +133,15 @@
 <template id="output">
 
     <section class="tabs bg-[#e6e8ed] ">
-        <div class="active-tab w-fit px-5 py-4 bg-[#F4F5F8]">
+        <div class="active-tab w-fit px-5 py-4 bg-[#F4F5F8] font-bold">
             {{#if errors}}Ошибки при выполнении {{else}} Результат выполнения {{/if}}
         </div>
     </section>
 
-    <section class="p-5 text-xs h-full overflow-y-scroll">
+    <section class="p-5 h-full overflow-y-scroll">
 
     {{#if errors}}
-        <h2>Ошибки валидации:</h2>
+
         {{#each errors}}
         <p>🚨{{this.message}}</p>
         {{/each}}
@@ -159,34 +160,41 @@
         <p class=""> {{ fields.0.file_name}}</p>
     </div>
 
-    <div class="editor__body mt-4">
+    <div class="editor__body mt-4 relative">
         <textarea id="editor__ide">{{fields.0.value}}</textarea>
+        <button id="resetbutton" onclick="app.reset()" class="absolute right-4 bottom-8 bg-[#3CC39E] text-white px-2 py-2 my-2 rounded-lg cursor-pointer" >
+            <img src="/assets/icon-reset.svg" alt="" >
+        </button>
     </div>
 
 </template>
 
 <template  id="testResults">
 
-    <button id="checkbutton" onclick="app.check()" class="absolute right-3 top-2 bg-[#3CC39E] text-white px-4 py-2 rounded-lg cursor-pointer" >
-        Запустить и проверить
-    </button>
+    <section class="tabs flex flex-wrap items-center bg-[#EFEFEF] text-[#201e2e]] font-bold">
 
-    <section class="tabs  bg-[#EFEFEF] text-[#201e2e]] font-bold">
-        <div class="tab-active  bg-[#F4F5F8] px-5 py-4 inline-flex items-center">
-            <i class="icon icon-check"></i>
-            <span>Выполнено {{countTrue tests "passed"}} из {{tests.length}}</span>
+        <div class="">
+            <div class="tab-active  bg-[#F4F5F8] px-5 py-4">
+                <span>Выполнено {{countTrue tests "passed"}} из {{tests.length}}</span>
+            </div>
         </div>
-    </section>
 
+        <div class=" pl-4">
+            <button id="checkbutton" onclick="app.check()" class="w-full bg-[#3CC39E] text-white px-4 py-2 my-2 rounded-lg cursor-pointer" >
+                Запустить и проверить
+            </button>
+        </div>
+
+    </section>
 
     {{#if completed}}
 
-    <div class="rounded-xl bg-[#3CC39E] mx-4 p-4">
+    <div class="rounded-xl bg-[#3CC39E] mx-4 mt-4 p-4 ">
         Задача выполнена! Код
         <span class="inline-block rounded bg-teal-600 px-1 text-white"> {{task.confirmationCode}} </span>
     </div>
 
-     {{/if}}
+    {{/if}}
 
         <section class="h-full overflow-scroll">
         <ul class="p-5">
@@ -213,36 +221,34 @@
 
             {{/each}}
 
-
-
         </ul>
         </section>
 
 
 </template>
 
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
-
-
-<script src="/test_runner.js"></script>
-<script src="/component.class.js"></script>
-<script src="/task.class.js"></script>
-<script src="/app.js"></script>
+<script src="/test_runner.js" defer></script>
+<script src="/component.class.js" defer></script>
+<script src="/task.class.js" defer></script>
+<script src="/app.js" defer></script>
 
 <script>
 
-const urlObj = new URL(window.location.href);
-const taskID = urlObj.pathname.split('/').filter(Boolean).pop()
-console.log(taskID)
+    const urlObj = new URL(window.location.href);
+    const taskID = urlObj.pathname.split('/').filter(Boolean).pop()
 
-const app = new App(taskID).start()
-app.testRunner = new TestRunner()
+
+    document.addEventListener('DOMContentLoaded', function(){
+
+        const app = new App(taskID);
+        app.testRunner = new TestRunner()
+        document.app = app
+        app.start()
+
+    })
+
 
 </script>
-
 
 </body>
 </html>

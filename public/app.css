@@ -118,8 +118,8 @@ details {
 
 .resizable-container {
     display: flex;
-    width: 100%;
-    padding: 16px;
+    flex-wrap: wrap;
+    margin: 16px;
     max-height: calc(100vh);
 }
 

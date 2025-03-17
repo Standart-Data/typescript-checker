@@ -55,6 +55,7 @@ class App {
 
         this.components.editor.refs["ide"] = CodeMirror.fromTextArea(ideNode, {
             lineNumbers: true,
+            lineWrapping: true,
             matchBrackets: true,
             mode: "javascript", // Or "typescript" if you have the relevant files locally
             theme: "material-darker"
@@ -109,6 +110,9 @@ class App {
             fetch: () => {}
         }
 
+        console.log("All global This Objects")
+        console.log(domDocument.contentWindow.globalThis)
+
         const result = await this.testRunner.run(this.task.tests, context)
         this.testResults = result.tests
         this.groupedTests = this.groupTests(this.testResults);
@@ -143,6 +147,7 @@ class App {
         }
     }
 
+
     saveToLocalStorage() {
         try {
             localStorage.setItem(this.taskID, this.getEditorValues());
@@ -152,7 +157,16 @@ class App {
         }
     }
 
-
+    reset() {
+        try {
+            localStorage.removeItem(this.taskID);
+            this.components.editor.update({"fields": this.task.fields})
+            this.highlightEditor()
+            console.log("Запомненный код удален из localStorage.");
+        } catch (error) {
+            console.error("Ошибка при удалении из localStorage:", error);
+        }
+    }
 
 
     // TODO Это заплатка, ее над бы выпилить
@@ -160,107 +174,13 @@ class App {
 
         const button = document.querySelector("#checkbutton")
         if (!button){return }
-
         if (processName==="check") {button.innerHTML = "Проверяем ..."}
 
     }
 
 }
 
-
-
-
-
-
-class ResizableColumns {
-    constructor(container, leftColumn, middleColumn, rightColumn, resizerLeft, resizerRight) {
-        this.container = container;
-        this.leftColumn = leftColumn;
-        this.middleColumn = middleColumn;
-        this.rightColumn = rightColumn;
-        this.resizerLeft = resizerLeft;
-        this.resizerRight = resizerRight;
-
-        this.isResizing = false;
-        this.currentX = 0;
-        this.initialWidths = {};
-        this.currentResizer = null;
-
-        this.resizerLeft.addEventListener('mousedown', (e) => this.startResizing(e, this.resizerLeft));
-        this.resizerRight.addEventListener('mousedown', (e) => this.startResizing(e, this.resizerRight));
-
-        window.addEventListener('mousemove', (e) => this.resizing(e));
-        window.addEventListener('mouseup', () => this.endResizing());
-        window.addEventListener('resize', () => this.resizeHandler());
-        window.addEventListener('DOMContentLoaded', () => this.setInitialWidths());
-    }
-
-    startResizing(e, resizer) {
-        this.isResizing = true;
-        this.currentX = e.clientX;
-        this.currentResizer = resizer;
-
-        this.initialWidths = {
-            left: this.leftColumn.offsetWidth,
-            middle: this.middleColumn.offsetWidth,
-            right: this.rightColumn.offsetWidth
-        };
-        e.preventDefault();
-    }
-
-    resizing(e) {
-        if (!this.isResizing) return;
-
-        const deltaX = e.clientX - this.currentX;
-        let newLeftWidth, newMiddleWidth;
-
-        if (this.currentResizer === this.resizerLeft) {
-            newLeftWidth = this.initialWidths.left + deltaX;
-            newMiddleWidth = this.initialWidths.middle - deltaX;
-
-            const minWidth = 100;
-            const maxWidth = this.container.offsetWidth - minWidth * 2 - 20; // 20 - ширина разделителей
-            newLeftWidth = Math.max(minWidth, Math.min(maxWidth, newLeftWidth));
-            newMiddleWidth = Math.max(minWidth, Math.min(maxWidth - newLeftWidth, newMiddleWidth));
-
-
-            this.leftColumn.style.width = newLeftWidth + "px";
-            this.middleColumn.style.width = newMiddleWidth + "px";
-        } else if (this.currentResizer === this.resizerRight) {
-            newMiddleWidth = this.initialWidths.middle + deltaX;
-
-            const minWidth = 100;
-            const maxWidth = this.container.offsetWidth - minWidth * 2 - 20 - this.leftColumn.offsetWidth; // 20 - ширина разделителей
-            newMiddleWidth = Math.max(minWidth, Math.min(maxWidth, newMiddleWidth));
-            this.middleColumn.style.width = newMiddleWidth + "px";
-
-        }
-
-        this.rightColumn.style.width = this.container.offsetWidth - this.leftColumn.offsetWidth - this.middleColumn.offsetWidth - 20 + "px";
-    }
-
-    endResizing() {
-        this.isResizing = false;
-        this.currentResizer = null;
-    }
-
-    setInitialWidths() {
-        const initialWidth = this.container.offsetWidth / 3;
-        this.leftColumn.style.width = initialWidth + "px";
-        this.middleColumn.style.width = initialWidth + "px";
-        this.rightColumn.style.width = initialWidth + "px";
-    }
-
-    resizeHandler() {
-        const currentWidth = this.container.offsetWidth;
-        const initialWidth = currentWidth / 3;
-
-        this.leftColumn.style.width = initialWidth + "px";
-        this.middleColumn.style.width = initialWidth + "px";
-        this.rightColumn.style.width = initialWidth + "px";
-    }
-}
-
+// Активируем перетаскивание колонок
 
 const container = document.querySelector('.resizable-container');
 
