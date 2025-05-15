@@ -28,6 +28,7 @@ function readTsFiles(filePaths) {
       types: {},
       enums: {},
       classes: {},
+      namespaces: {},
     };
 
     function parseObject(node, checker) {
@@ -127,7 +128,14 @@ function readTsFiles(filePaths) {
       return checker.typeToString(type);
     }
 
-    function parseNode(node, checker) {
+    function isExported(node) {
+      return (
+          node.modifiers &&
+          node.modifiers.some((mod) => mod.kind === ts.SyntaxKind.ExportKeyword)
+      );
+    }
+
+    function parseNode(node, checker, context = allVariables) {
       switch (node.kind) {
         case ts.SyntaxKind.VariableStatement:
           node.declarationList.declarations.forEach((declaration) => {
@@ -143,7 +151,7 @@ function readTsFiles(filePaths) {
                 declaration.name.elements.forEach((element, index) => {
                   const elementName = element.name.getText();
                   const elementType = elementTypes[index];
-                  allVariables.variables[elementName] = {
+                  context.variables[elementName] = {
                     types: [elementType],
                     from: declaration.initializer.getText().trim(),
                   };
@@ -186,20 +194,22 @@ function readTsFiles(filePaths) {
                 const body = declaration.initializer.body.getText();
 
                 // Сохраняем переменную как функцию
-                allVariables.functions[name] = {
+                context.functions[name] = {
                   types: [type], // Используем тип из объявления (Greeting)
                   params,
                   returnResult: [returnTypeString],
                   body,
+                  isExported: isExported(node), // Добавляем флаг экспорта
                 };
               } else if (
                 initializer &&
                 ts.isObjectLiteralExpression(declaration.initializer)
               ) {
                 // Если переменная инициализирована объектом
-                allVariables.variables[name] = {
+                context.variables[name] = {
                   types: [type],
                   value: parseObject(declaration.initializer, checker),
+                  isExported: isExported(node), // Добавляем флаг экспорта
                 };
               } else if (
                 initializer &&
@@ -210,15 +220,17 @@ function readTsFiles(filePaths) {
                   declaration.initializer,
                   checker
                 );
-                allVariables.variables[name] = {
+                context.variables[name] = {
                   types: [returnTypeString],
                   value: initializer,
+                  isExported: isExported(node), // Добавляем флаг экспорта
                 };
               } else {
                 // Обычная переменная
-                allVariables.variables[name] = {
+                context.variables[name] = {
                   types: [type],
                   value: initializer,
+                  isExported: isExported(node), // Добавляем флаг экспорта
                 };
               }
             }
@@ -240,14 +252,15 @@ function readTsFiles(filePaths) {
             ? extendedClause.types.map((type) => type.getText())
             : [];
 
-          allVariables.interfaces[interfaceName] = {
+          context.interfaces[interfaceName] = {
             properties,
             extendedBy, // Добавляем поле extendedBy
+            isExported: isExported(node), // Добавляем флаг экспорта
           };
           break;
         case ts.SyntaxKind.FunctionDeclaration:
           const functionName = node.name.getText();
-          const existingFunction = allVariables.functions[functionName] || {};
+          const existingFunction = context.functions[functionName] || {};
 
           // Парсинг параметров
           const params = node.parameters.map((param) => ({
@@ -283,6 +296,7 @@ function readTsFiles(filePaths) {
             existingFunction.genericsTypes = genericsTypes;
             existingFunction.body = body;
             existingFunction.types = ["function"];
+            existingFunction.isExported = isExported(node); // Добавляем флаг экспорта
           } else {
             // Добавление перегрузки
             const overloadCount = Object.keys(existingFunction).filter((key) =>
@@ -294,16 +308,17 @@ function readTsFiles(filePaths) {
               returnResult: [returnTypeString],
               genericsTypes,
               body: null,
+              isExported: isExported(node), // Добавляем флаг экспорта
             };
           }
 
-          allVariables.functions[functionName] = existingFunction;
+          context.functions[functionName] = existingFunction;
           break;
           break;
         case ts.SyntaxKind.TypeAliasDeclaration:
           const typeName = node.name.getText();
           const aliasType = parseType(node.type);
-          allVariables.types[typeName] = aliasType;
+          context.types[typeName] = aliasType;
           break;
         case ts.SyntaxKind.EnumDeclaration:
           const enumName = node.name.getText();
@@ -426,9 +441,10 @@ function readTsFiles(filePaths) {
             }
           });
 
-          allVariables.classes[className] = {
+          context.classes[className] = {
             ...classMembers,
             extends: extendedClasses,
+            isExported: isExported(node), // Добавляем флаг экспорта
           };
           break;
         case ts.SyntaxKind.ExpressionStatement:
@@ -456,6 +472,24 @@ function readTsFiles(filePaths) {
                 }
               }
             }
+          }
+          break;
+
+          // Добавляем обработку namespaces
+        case ts.SyntaxKind.ModuleDeclaration:
+          if (ts.isModuleDeclaration(node) && node.body && ts.isModuleBlock(node.body)) {
+            const namespaceName = node.name.getText();
+            const namespaceContent = Object.keys(allVariables).reduce((acc, key) => ({
+              ...acc,
+              [key]: {},
+            }), {});
+
+            // Рекурсивно парсим содержимое namespace
+            ts.forEachChild(node.body, (childNode) => {
+              parseNode(childNode, checker, namespaceContent);
+            });
+
+            context.namespaces[namespaceName] = namespaceContent;
           }
           break;
         default:
