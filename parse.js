@@ -489,7 +489,10 @@ function readTsFiles(filePaths) {
               parseNode(childNode, checker, namespaceContent);
             });
 
-            context.namespaces[namespaceName] = namespaceContent;
+            context.namespaces[namespaceName] = {
+              ...namespaceContent,
+              isExported: isExported(node),
+            };
           }
           break;
         default:
