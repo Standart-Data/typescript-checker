@@ -1,129 +1,137 @@
-const express = require('express');
-
-const assert = require("assert");
-const cors = require('cors');
-const handlebars = require('express-handlebars');
-const { createTempFileWithContent, readTsFiles} = require('./parse');
-const { loadExercise } = require('./load')
-const { TSProcessor } = require('./classes/ts_processor')
-const {runMochaTests} = require("./runMocha");
-const {join} = require("node:path");
+const express = require("express");
+const cors = require("cors");
+const handlebars = require("express-handlebars");
+const { loadExercise } = require("./load");
+const { createProcessor } = require("./src"); // Используем главный index.js из src
+const { getParser, createTempFileWithContent } = require("./src"); // Используем главный index.js из src
+const { runMochaTests } = require("./runMocha"); // Этот файл может потребовать адаптации, если он использовал старые процессоры
+const { join } = require("node:path");
 
 const app = express();
 const port = 10000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.text({ type: 'text/plain' })); // Чтобы парсить запросы с типом content-type text/plain
-app.use(express.static('public'));
+app.use(express.text({ type: "text/plain" }));
+app.use(express.static("public"));
 
-app.engine('handlebars', handlebars.engine()); // or just handlebars()
-app.set('view engine', 'handlebars');
-app.set('views', './views'); // Make sure this path is correct
+app.engine("handlebars", handlebars.engine());
+app.set("view engine", "handlebars");
+app.set("views", "./views");
 
-// test 2
-app.get('/ts/:taskID', async (req, res) => {
-    try {
-        const exerciseData = await loadExercise(req.params.taskID)
-        res.sendFile('typescript.html', { root: join(__dirname, 'views') }); // Relative path
-    }  catch  (error) {
-        res.status(500).json({"error": "Cannot load exercise data. Please contact server administrator"})
-    }
-
+app.get("/:type(ts|react)/:taskID", async (req, res) => {
+  try {
+    await loadExercise(req.params.taskID); // Убедимся, что упражнение существует
+    res.sendFile("typescript.html", { root: join(__dirname, "views") });
+  } catch (error) {
+    console.error("Error loading exercise for /:type/:taskID:", error);
+    res.status(404).json({
+      error: "Cannot load exercise data or exercise not found.",
+    });
+  }
 });
 
-app.get('/load/:taskID', async (req, res) => {
-    try {
-        const data = await loadExercise(req.params.taskID)
-        res.json(data)
-    } catch {
-        res.json({"error": "Cannot load exercise data. Please contact server administrator"})
-        res.status(500)
-    }
-})
-
-// DEPRECATED
-app.post('/validate', (req, res) => {
-
-    const requestData = req.body;
-    const processor = new TSProcessor(requestData["main.ts"])
-    processor.validate()
-
-    res.setHeader('Content-Type', 'application/json')
-    res.json(processor.errors);
-
-})
-
-// DEPRECATED
-app.post('/process', (req, res) => {
-
-    const requestData = req.body;
-    const processor = new TSProcessor(requestData["main.ts"])
-    processor.process()
-    res.setHeader('Content-Type', 'application/json')
-    res.json({"main.js": processor.result});
-
-})
-
-// DEPRECATED
-app.post('/parse', (req, res) => {
-
-
-    const files = req.body;
-    const result = {};
-
-    for (const [filename, filecontent] of Object.entries(files)) {
-        const tempFilePath = createTempFileWithContent(filecontent);
-        result[filename] = readTsFiles([tempFilePath])
-    }
-
-    res.setHeader('Content-Type', 'application/json')
-    res.json(result);
-
+app.get("/load/:taskID", async (req, res) => {
+  try {
+    const data = await loadExercise(req.params.taskID);
+    res.json(data);
+  } catch (error) {
+    console.error("Error loading exercise for /load/:taskID:", error);
+    res.status(500).json({
+      error: "Cannot load exercise data. Please contact server administrator",
+    });
+  }
 });
 
+app.post("/check", (req, res) => {
+  let combinedResult = {};
+  let combinedMetadata = {
+    files: {},
+  };
+  let combinedErrors = [];
 
-app.post('/check/ts', (req, res) => {
+  const filesFromBody = req.body;
 
-    let result = {};
-    let metadata = {};
-    let errors = []
+  if (Object.keys(filesFromBody).length === 0) {
+    return res.status(400).json({
+      errors: [{ message: "Нет файлов для обработки" }],
+      result: {},
+      metadata: {},
+    });
+  }
 
-    const requestData = req.body;
-    const mainTsContent = requestData["main.ts"];
+  try {
+    const mainFileName =
+      Object.keys(filesFromBody).find((name) => name === "main.ts") ||
+      Object.keys(filesFromBody)[0];
 
-    // Здесь валидируем код
+    for (const [filename, filecontent] of Object.entries(filesFromBody)) {
+      let fileExtension;
+      if (filename.endsWith(".d.ts")) {
+        fileExtension = "d.ts";
+      } else {
+        fileExtension = filename.split(".").pop().toLowerCase();
+      }
 
-    const processor = new TSProcessor(mainTsContent)
-    processor.validate()
-    errors = processor.errors
+      if (["ts", "tsx", "d.ts"].includes(fileExtension)) {
+        const processor = createProcessor(fileExtension, filecontent);
+        const currentErrors = processor.validate();
+        combinedErrors = [...combinedErrors, ...currentErrors];
 
-    // Здесь вытаскиваем результат и ошибки
+        if (currentErrors.length === 0) {
+          const processedCode = processor.process();
+          let outputFileName;
+          if (fileExtension === "d.ts") {
+            outputFileName = filename;
+          } else {
+            outputFileName = filename.replace(
+              fileExtension === "tsx" ? ".tsx" : ".ts",
+              ".js"
+            );
+          }
+          combinedResult[outputFileName] = processedCode;
+        }
 
-    if (errors.length === 0) { // Only process if validation passes
-        processor.process();
-        result = { "main.js": processor.result };
+        const tempFilePath = createTempFileWithContent(
+          filecontent,
+          `.${fileExtension}`
+        );
+        const parserFn = getParser(fileExtension);
+        if (parserFn) {
+          const metadataForFile = parserFn([tempFilePath]);
+          combinedMetadata.files[filename] = metadataForFile;
+
+          if (filename === mainFileName) {
+            Object.keys(metadataForFile).forEach((key) => {
+              if (key !== "files") {
+                combinedMetadata[key] = metadataForFile[key];
+              }
+            });
+          }
+        } else {
+          combinedMetadata.files[filename] = {
+            message: "Парсер для этого типа файла не реализован",
+          };
+        }
+      }
     }
 
-    // Здесь парсим – вытаскиваем структуру
-
-    const files = req.body;
-
-    for (const [filename, filecontent] of Object.entries(files)) {
-        const tempFilePath = createTempFileWithContent(filecontent);
-        metadata[filename] = readTsFiles([tempFilePath])
-    }
-
-    res.setHeader('Content-Type', 'application/json');
-    res.json({ errors: errors, result: result, metadata: metadata });
+    res.setHeader("Content-Type", "application/json");
+    res.json({
+      errors: combinedErrors,
+      result: combinedResult,
+      metadata: combinedMetadata,
+    });
+  } catch (error) {
+    console.error("Ошибка обработки файлов:", error);
+    res.status(500).json({
+      errors: [{ message: `Ошибка обработки файлов: ${error.message}` }],
+      result: {},
+      metadata: {},
+    });
+  }
 });
-
-
-
-
-
-
 
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });
