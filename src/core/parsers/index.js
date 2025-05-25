@@ -1,5 +1,5 @@
 const { parseTypeScript } = require("./typescript");
-const { parseReact } = require("./react");
+const { parseReact } = require("./react/index");
 
 /**
  * Возвращает функцию парсера для указанного типа файла.

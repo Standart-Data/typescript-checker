@@ -1,11 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const handlebars = require("express-handlebars");
-const { loadExercise } = require("./load");
-const { createProcessor } = require("./src"); // Используем главный index.js из src
-const { getParser, createTempFileWithContent } = require("./src"); // Используем главный index.js из src
-const { runMochaTests } = require("./runMocha"); // Этот файл может потребовать адаптации, если он использовал старые процессоры
 const { join } = require("node:path");
+const { handleCheckRequest, loadExercise } = require("./src");
 
 const app = express();
 const port = 10000;
@@ -44,92 +41,10 @@ app.get("/load/:taskID", async (req, res) => {
 });
 
 app.post("/check", (req, res) => {
-  let combinedResult = {};
-  let combinedMetadata = {
-    files: {},
-  };
-  let combinedErrors = [];
+  const result = handleCheckRequest(req.body);
 
-  const filesFromBody = req.body;
-
-  if (Object.keys(filesFromBody).length === 0) {
-    return res.status(400).json({
-      errors: [{ message: "Нет файлов для обработки" }],
-      result: {},
-      metadata: {},
-    });
-  }
-
-  try {
-    const mainFileName =
-      Object.keys(filesFromBody).find((name) => name === "main.ts") ||
-      Object.keys(filesFromBody)[0];
-
-    for (const [filename, filecontent] of Object.entries(filesFromBody)) {
-      let fileExtension;
-      if (filename.endsWith(".d.ts")) {
-        fileExtension = "d.ts";
-      } else {
-        fileExtension = filename.split(".").pop().toLowerCase();
-      }
-
-      if (["ts", "tsx", "d.ts"].includes(fileExtension)) {
-        const processor = createProcessor(fileExtension, filecontent);
-        const currentErrors = processor.validate();
-        combinedErrors = [...combinedErrors, ...currentErrors];
-
-        if (currentErrors.length === 0) {
-          const processedCode = processor.process();
-          let outputFileName;
-          if (fileExtension === "d.ts") {
-            outputFileName = filename;
-          } else {
-            outputFileName = filename.replace(
-              fileExtension === "tsx" ? ".tsx" : ".ts",
-              ".js"
-            );
-          }
-          combinedResult[outputFileName] = processedCode;
-        }
-
-        const tempFilePath = createTempFileWithContent(
-          filecontent,
-          `.${fileExtension}`
-        );
-        const parserFn = getParser(fileExtension);
-        if (parserFn) {
-          const metadataForFile = parserFn([tempFilePath]);
-          combinedMetadata.files[filename] = metadataForFile;
-
-          if (filename === mainFileName) {
-            Object.keys(metadataForFile).forEach((key) => {
-              if (key !== "files") {
-                combinedMetadata[key] = metadataForFile[key];
-              }
-            });
-          }
-        } else {
-          combinedMetadata.files[filename] = {
-            message: "Парсер для этого типа файла не реализован",
-          };
-        }
-      }
-    }
-
-    res.setHeader("Content-Type", "application/json");
-    res.json({
-      errors: combinedErrors,
-      result: combinedResult,
-      metadata: combinedMetadata,
-    });
-  } catch (error) {
-    console.error("Ошибка обработки файлов:", error);
-    res.status(500).json({
-      errors: [{ message: `Ошибка обработки файлов: ${error.message}` }],
-      result: {},
-      metadata: {},
-    });
-  }
+  res.setHeader("Content-Type", "application/json");
+  res.status(result.statusCode).json(result.response);
 });
 
 app.listen(port, () => {

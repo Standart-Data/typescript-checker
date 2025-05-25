@@ -1,7 +1,3 @@
-/**
- * Экспортирует вспомогательные утилиты для работы с AST и другими компонентами
- */
-
 const {
   createTempFileWithContent,
   readFileContent,

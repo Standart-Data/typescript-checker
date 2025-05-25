@@ -1,13 +1,23 @@
-const { createProcessor } = require("./processors");
+// API layer
+const { handleCheckRequest } = require("./api");
+const { loadExercise } = require("./api/handlers");
 
+// Core layer
 const {
   getParser,
   parseFiles,
   parseTypeScript,
   parseReact,
-} = require("./parsers");
+  processFiles,
+  extractMetadata,
+} = require("./core");
 
-// Утилиты
+// Processors
+const {
+    createProcessor,
+} = require("./processors");
+
+// Utils
 const {
   createTempFileWithContent,
   getFileType,
@@ -15,13 +25,22 @@ const {
 } = require("./utils");
 
 module.exports = {
-  createProcessor,
+  // API
+  handleCheckRequest,
+  loadExercise,
+
+  // Core
   getParser,
   parseFiles,
-
   parseTypeScript,
   parseReact,
+  processFiles,
+  extractMetadata,
 
+  // Processors
+  createProcessor,
+
+  // Utils
   createTempFileWithContent,
   getFileType,
   readFileContent,

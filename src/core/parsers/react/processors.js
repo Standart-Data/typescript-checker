@@ -1,6 +1,6 @@
 const t = require("@babel/types");
 const { getTSType, getTypeFromFCAnnotation } = require("./types");
-const { getReturnJSXCode } = require("../../utils/jsxUtils");
+const { getReturnJSXCode } = require("../../../utils/jsxUtils");
 const { getComponentHooks } = require("./hooks");
 
 /**
