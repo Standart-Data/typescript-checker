@@ -1,4 +1,3 @@
-
 :root {
     --color-bg: #D5D7DD;
     --color-tasks-bg: #F4F5F8;
@@ -97,8 +96,6 @@ body {
     box-sizing: border-box;
 }
 
-
-
 #theTestResults li.passed::before {
     border:none;
     background-color: #3CC39E;
@@ -123,8 +120,6 @@ details {
     max-height: calc(100vh);
 }
 
-
-
 .resizable-container  .card {
     background-color: var(--color-tasks-bg);
     box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.05);
@@ -147,13 +142,11 @@ details {
 /* Изменение ширины */
 
 .resizer {
-
     width: 20px; /* Ширина разделителя */
     cursor: ew-resize; /* Курсор при наведении */
     background-image: url("/assets/three-dots-vertical.svg");
     background-position: center center;
     background-repeat: no-repeat;
-
 }
 
 /* Иконки */
@@ -166,10 +159,37 @@ details {
     background-position: 0 3px;
 }
 
-.icon-check{ background-image: url("/assets/icon-check.svg"); }
-.icon-exercise{ background-image: url("/assets/icon-exercise.svg"); }
-.icon-message{ background-image: url("/assets/icon-message.svg"); }
-.icon-chevron{ background-image: url("/assets/icon-chevron.svg"); }
+.icon-check { background-image: url("/assets/icon-check.svg"); }
+.icon-exercise { background-image: url("/assets/icon-exercise.svg"); }
+.icon-message { background-image: url("/assets/icon-message.svg"); }
+.icon-chevron { background-image: url("/assets/icon-chevron.svg"); }
 
 /* Вкладки */
+
+.editor-tab {
+    background-color: rgba(32, 30, 46, 0.7);
+    transition: background-color 0.2s ease;
+}
+
+.editor-tab:hover {
+    background-color: rgba(32, 30, 46, 0.9);
+}
+
+.editor-tab.active-tab {
+    background-color: var(--color-primary);
+    border-bottom: 2px solid var(--color-brand);
+}
+
+.editor-content.hidden {
+    display: none;
+}
+
+/* Обеспечиваем работу CodeMirror во всех редакторах */
+.editor-content {
+    height: 100%;
+}
+
+.editor-content .CodeMirror {
+    height: 100%;
+}
 

@@ -1,7 +1,8 @@
-const { readTsFiles } = require("../../parse");
+const { parseTypeScript } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
-const allVariables = readTsFiles(["./main.ts"]);
+const allVariables = parseTypeScript([path.join(__dirname, "main.ts")]);
 
 describe("Function Overload Parsing Tests", function () {
   it("Функция add должна существовать с правильными перегрузками", function () {

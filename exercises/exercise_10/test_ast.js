@@ -1,7 +1,8 @@
-const { readTsFiles } = require("../../parse");
+const { parseTypeScript } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
-const allVariables = readTsFiles(["./main.ts"]);
+const allVariables = parseTypeScript([path.join(__dirname, "main.ts")]);
 
 describe("First test", function () {
   it("В коде объявлен класс Car с параметром make с типом string", function () {

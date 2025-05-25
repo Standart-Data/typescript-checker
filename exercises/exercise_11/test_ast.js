@@ -1,7 +1,8 @@
-const { readTsFiles } = require("../../parse");
+const { parseTypeScript } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
-const allVariables = readTsFiles(["./main.ts"]);
+const allVariables = parseTypeScript([path.join(__dirname, "main.ts")]);
 
 describe("Access Modifiers Test", function () {
   it("Класс Window имеет модификаторы доступа у свойств", function () {

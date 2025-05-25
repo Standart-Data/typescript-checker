@@ -1,7 +1,8 @@
-const { readTsFiles } = require("../../parse");
+const { parseTypeScript } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
-const allVariables = readTsFiles(["./main.ts"]);
+const allVariables = parseTypeScript([path.join(__dirname, "main.ts")]);
 console.log(allVariables.classes['Computer']['constructorSignature0']['params'])
 console.log(allVariables.classes['Computer']['constructorSignature1']['params'])
 describe("Class Constructor Parsing Tests", function () {
