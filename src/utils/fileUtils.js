@@ -11,17 +11,8 @@ const crypto = require("crypto");
  * @returns {string} - Путь к созданному временному файлу.
  */
 function createTempFileWithContent(content, extension = ".ts") {
-  // Генерируем случайное имя файла, чтобы избежать коллизий, если tmp.fileSync не справляется
-  const randomFileName = path.join(
-    os.tmpdir(),
-    `temp-${crypto.randomBytes(8).toString("hex")}${extension}`
-  );
-  // Используем tmp.fileSync для автоматического управления временным файлом,
-  // но имя генерируем свое для большей предсказуемости расширения.
-  // Однако, для простоты и использования возможностей tmp, можно сделать так:
   const tempFile = tmp.fileSync({ postfix: extension, dir: os.tmpdir() });
   fs.writeFileSync(tempFile.name, content);
-  // tmp.fileSync сам удалит файл при завершении процесса или можно вызвать tmpFile.removeCallback()
   return tempFile.name;
 }
 

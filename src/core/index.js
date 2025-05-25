@@ -1,4 +1,3 @@
-// Parsers
 const {
   getParser,
   parseFiles,
@@ -6,7 +5,6 @@ const {
   parseReact,
 } = require("./parsers");
 
-// Services
 const {
   getFileExtension,
   getOutputFileName,
@@ -18,13 +16,10 @@ const {
 } = require("./services");
 
 module.exports = {
-  // Parsers
   getParser,
   parseFiles,
   parseTypeScript,
   parseReact,
-
-  // Services
   getFileExtension,
   getOutputFileName,
   processFile,

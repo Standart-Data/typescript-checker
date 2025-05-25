@@ -242,6 +242,48 @@ function parseReact(filePaths) {
             isDeclared: isDeclarationFile,
           };
         },
+        TSEnumDeclaration(path) {
+          // Обрабатываем только в TS файлах
+          if (!isTypeScriptFile && !isDeclarationFile) return;
+
+          const enumName = path.node.id.name;
+
+          // Проверяем, является ли enum константным (const enum)
+          const isConst = path.node.const || false;
+
+          const members = path.node.members.map((member, index) => {
+            const memberName = member.id.name;
+            let memberValue = undefined;
+
+            if (member.initializer) {
+              if (t.isStringLiteral(member.initializer)) {
+                memberValue = `"${member.initializer.value}"`;
+              } else if (t.isNumericLiteral(member.initializer)) {
+                memberValue = member.initializer.value;
+              } else {
+                // Для сложных выражений берем исходный код
+                memberValue = code.slice(
+                  member.initializer.start,
+                  member.initializer.end
+                );
+              }
+            } else {
+              // Для числовых enum без инициализатора присваиваем индекс
+              memberValue = index;
+            }
+
+            return { name: memberName, value: memberValue };
+          });
+
+          // Добавляем enum в формате, совместимом с readTsFiles
+          result.enums[enumName] = {
+            name: enumName,
+            isConst: isConst, // Добавляем флаг для различения const enum от обычного enum
+            members: members,
+            isExported: path.parent.type === "ExportNamedDeclaration",
+            isDeclared: isDeclarationFile,
+          };
+        },
         // Обработка экспортов
         ExportNamedDeclaration(path) {
           if (path.node.declaration) {
@@ -470,20 +512,59 @@ function parseReact(filePaths) {
             result.functions[varName] = componentInfo;
           } else if (path.node.init) {
             // Обычная переменная
+            let varType = "any";
+
+            // Сначала проверяем TypeScript аннотацию типа
+            if (path.node.id.typeAnnotation) {
+              varType = safeGetTSType(
+                path.node.id.typeAnnotation.typeAnnotation
+              );
+            } else {
+              // Если нет аннотации типа, определяем тип по инициализатору
+              varType = getType(path.node.init);
+            }
+
+            // Определяем тип объявления переменной
+            let declarationType = "var"; // по умолчанию
+            if (path.parent && path.parent.kind === "const") {
+              declarationType = "const";
+            } else if (path.parent && path.parent.kind === "let") {
+              declarationType = "let";
+            }
+
             result.variables[varName] = {
-              types: [getType(path.node.init)],
+              types: [varType],
               value: path.node.init.loc
                 ? code.slice(path.node.init.start, path.node.end)
                 : undefined,
+              declarationType: declarationType, // Добавляем тип объявления
               isDeclared: false,
               isExported:
                 path.parent?.parent?.type === "ExportNamedDeclaration",
             };
           } else {
             // Переменная без инициализации
+            let varType = "any";
+
+            // Проверяем TypeScript аннотацию типа даже без инициализатора
+            if (path.node.id.typeAnnotation) {
+              varType = safeGetTSType(
+                path.node.id.typeAnnotation.typeAnnotation
+              );
+            }
+
+            // Определяем тип объявления переменной
+            let declarationType = "var"; // по умолчанию
+            if (path.parent && path.parent.kind === "const") {
+              declarationType = "const";
+            } else if (path.parent && path.parent.kind === "let") {
+              declarationType = "let";
+            }
+
             result.variables[varName] = {
-              types: ["any"],
+              types: [varType],
               value: undefined,
+              declarationType: declarationType, // Добавляем тип объявления
               isDeclared: false,
               isExported:
                 path.parent?.parent?.type === "ExportNamedDeclaration",
@@ -500,6 +581,9 @@ function parseReact(filePaths) {
             // Получаем декораторы класса
             const classDecorators = parseDecorators(path);
 
+            // Анализируем модификаторы класса
+            const isAbstract = path.node.abstract || false;
+
             const classInfo = {
               methods: {},
               fields: {},
@@ -507,6 +591,7 @@ function parseReact(filePaths) {
               extendsClass: "React.Component",
               jsx: true,
               isExported: path.parent?.type === "ExportNamedDeclaration",
+              isAbstract: isAbstract, // Добавляем флаг абстрактного класса
             };
 
             // Обрабатываем методы и свойства класса для получения их декораторов
@@ -519,12 +604,30 @@ function parseReact(filePaths) {
               if (t.isClassMethod(classMember) && classMember.key) {
                 const methodName = classMember.key.name;
 
+                // Определяем модификаторы доступа для методов
+                let accessModifier = "public"; // по умолчанию public
+                if (classMember.accessibility === "private") {
+                  accessModifier = "private";
+                } else if (classMember.accessibility === "protected") {
+                  accessModifier = "protected";
+                }
+
+                const isStatic = classMember.static || false;
+                const isAsync = classMember.async || false;
+                const isAbstract = classMember.abstract || false;
+                const isOverride = classMember.override || false;
+
                 // Добавляем метод, если его еще нет
                 if (!classInfo.methods[methodName]) {
                   classInfo.methods[methodName] = {
                     returnType: classMember.returnType
                       ? safeGetTSType(classMember.returnType.typeAnnotation)
                       : "any",
+                    accessModifier: accessModifier, // Добавляем модификатор доступа
+                    isStatic: isStatic, // Добавляем флаг статического метода
+                    isAsync: isAsync, // Добавляем флаг асинхронного метода
+                    isAbstract: isAbstract, // Добавляем флаг абстрактного метода
+                    isOverride: isOverride, // Добавляем флаг переопределения
                   };
                 }
 
@@ -555,11 +658,29 @@ function parseReact(filePaths) {
               } else if (t.isClassProperty(classMember) && classMember.key) {
                 const propertyName = classMember.key.name;
 
+                // Определяем модификаторы доступа для свойств
+                let accessModifier = "public"; // по умолчанию public
+                if (classMember.accessibility === "private") {
+                  accessModifier = "private";
+                } else if (classMember.accessibility === "protected") {
+                  accessModifier = "protected";
+                }
+
+                const isStatic = classMember.static || false;
+                const isReadonly = classMember.readonly || false;
+                const isAbstract = classMember.abstract || false;
+                const isOverride = classMember.override || false;
+
                 // Добавляем свойство
                 classInfo.fields[propertyName] = {
                   type: classMember.typeAnnotation
                     ? safeGetTSType(classMember.typeAnnotation.typeAnnotation)
                     : "any",
+                  accessModifier: accessModifier, // Добавляем модификатор доступа
+                  isStatic: isStatic, // Добавляем флаг статического свойства
+                  isReadonly: isReadonly, // Добавляем флаг readonly
+                  isAbstract: isAbstract, // Добавляем флаг абстрактного свойства
+                  isOverride: isOverride, // Добавляем флаг переопределения
                 };
 
                 // Добавляем декораторы свойства

@@ -1,8 +1,6 @@
-// API layer
 const { handleCheckRequest } = require("./api");
 const { loadExercise } = require("./api/handlers");
 
-// Core layer
 const {
   getParser,
   parseFiles,
@@ -12,12 +10,8 @@ const {
   extractMetadata,
 } = require("./core");
 
-// Processors
-const {
-    createProcessor,
-} = require("./processors");
+const { createProcessor } = require("./processors");
 
-// Utils
 const {
   createTempFileWithContent,
   getFileType,
@@ -25,22 +19,15 @@ const {
 } = require("./utils");
 
 module.exports = {
-  // API
   handleCheckRequest,
   loadExercise,
-
-  // Core
   getParser,
   parseFiles,
   parseTypeScript,
   parseReact,
   processFiles,
   extractMetadata,
-
-  // Processors
   createProcessor,
-
-  // Utils
   createTempFileWithContent,
   getFileType,
   readFileContent,
