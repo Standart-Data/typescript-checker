@@ -1,9 +1,10 @@
 // Импорты для тестирования
-const { parseReact } = require("../../parseReact");
+const { parseReact } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
 // Парсим TSX файл
-const reactInfo = parseReact(["./main.tsx"]);
+const reactInfo = parseReact([path.join(__dirname, "main.tsx")]);
 
 describe("Дженерик тип DataState<T>:", function () {
   it("Создан тип DataState<T>", function () {

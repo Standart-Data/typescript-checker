@@ -1,9 +1,10 @@
 // Импорты для тестирования
-const { readTsFiles } = require("../../parse");
+const { parseTypeScript } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
 // Парсим d.ts файл
-const allTypes = readTsFiles(["./main.d.ts"]);
+const allTypes = parseTypeScript([path.join(__dirname, "main.d.ts")]);
 console.log(allTypes, "parsed types");
 
 describe("Интерфейс User:", function () {

@@ -1,7 +1,8 @@
-const { parseReact } = require("../../parseReact");
+const { parseReact } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
-const allVariables = parseReact(["./main.tsx"]);
+const allVariables = parseReact([path.join(__dirname, "main.tsx")]);
 
 describe("Интерфейс GreetingProps:", function () {
   it("Создан интерфейс GreetingProps", function () {
