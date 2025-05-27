@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseTypeScript } from "./typescript";
-import { parseReact } from "./react/parseReact";
+import { parseReact } from "./react";
 import { createTempFileWithContent, cleanupTempDir } from "../tests/testUtils";
 
 describe("Cross-Parser Consistency Checks", () => {
@@ -326,11 +326,72 @@ describe("Cross-Parser Consistency Checks", () => {
       }`,
       check: (tsResult, reactResult) => {
         expect(tsResult.namespaces.Utils).toBeDefined();
+        expect(tsResult.namespaces.Utils.isExported).toBe(true); // Новая проверка
         // React парсер может не обрабатывать namespace как отдельную структуру
         // но должен экспортировать содержимое
         expect(reactResult.exports.Utils).toBe(true);
         expect(reactResult.exports.helper).toBe(true);
         expect(reactResult.exports.constant).toBe(true);
+      },
+    },
+    {
+      name: "Class with Constructor Overloads",
+      tsContent: `
+        class Computer {
+          private id: number;
+          protected name: string;
+          public model: string;
+          
+          constructor(name: string, model: string, color: string)
+          constructor(name: string, model: string, id: number)
+          constructor(name: string, model: string, param: string | number) {
+            this.name = name;
+            this.model = model;
+            if (typeof param === 'number') {
+              this.id = param;
+            }
+          }
+        }
+      `,
+      reactContent: `
+        class Computer {
+          private id: number;
+          protected name: string;
+          public model: string;
+          
+          constructor(name: string, model: string, color: string)
+          constructor(name: string, model: string, id: number)
+          constructor(name: string, model: string, param: string | number) {
+            this.name = name;
+            this.model = model;
+            if (typeof param === 'number') {
+              this.id = param;
+            }
+          }
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        const tsClass = tsResult.classes.Computer;
+        expect(tsClass).toBeDefined();
+
+        // Проверяем обратную совместимость - старый формат
+        expect(tsClass.constructor).toBeDefined();
+        expect(tsClass.constructorSignature0).toBeDefined();
+        expect(tsClass.constructorSignature1).toBeDefined();
+
+        // Проверяем свойства в старом формате
+        expect(tsClass.id.modificator).toBe("private");
+        expect(tsClass.name.modificator).toBe("protected");
+        expect(tsClass.model.modificator).toBe("opened");
+
+        // Проверяем новый формат тоже
+        expect(tsClass.properties.id.accessModifier).toBe("private");
+        expect(tsClass.properties.name.accessModifier).toBe("protected");
+        expect(tsClass.properties.model.accessModifier).toBe("public");
+
+        // React парсер может обрабатывать классы по-разному
+        // Минимальная проверка, что React парсер не упал
+        expect(reactResult).toBeDefined();
       },
     },
     {

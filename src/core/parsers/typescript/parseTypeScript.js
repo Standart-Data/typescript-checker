@@ -1,6 +1,25 @@
 const ts = require("typescript");
 const fs = require("fs");
 const path = require("path");
+const {
+  getCommonModifiers,
+  getAccessModifier,
+  getOldFormatModifier,
+  isExported,
+  isDeclared,
+  isAsync,
+  isGenerator,
+  isStatic,
+  isReadonly,
+  isConst,
+  isDefault,
+  isAbstract,
+  getVariableType,
+  getDeclarationType,
+  isConstVariable,
+  createOldFormatConstructorParam,
+  createOldFormatProperty,
+} = require("./common-utils");
 
 /**
  * Обрабатывает декораторы для класса, методов, свойств и параметров
@@ -119,9 +138,11 @@ function parseModuleContents(node, checker, allVariables, isDeclared) {
       node.flags & ts.NodeFlags.Namespace
         ? allVariables.namespaces
         : allVariables.modules;
+
     target[moduleName] = {
       ...moduleData,
       isDeclared,
+      isExported: isExported(node, false /*isModuleMember*/),
     };
   }
 }
@@ -143,13 +164,11 @@ function parseSimpleFunctionDeclaration(
       returnType = checker.typeToString(signature.getReturnType());
     }
 
-    // Анализируем дополнительные модификаторы функции
-    const isGenerator = node.asteriskToken !== undefined || false;
-
-    const isDefault =
-      node.modifiers?.some(
-        (mod) => mod.kind === ts.SyntaxKind.DefaultKeyword
-      ) || false;
+    const modifiers = getCommonModifiers(
+      node,
+      isParentDeclared,
+      isModuleMember
+    );
 
     context.functions[functionName] = {
       name: functionName,
@@ -165,24 +184,11 @@ function parseSimpleFunctionDeclaration(
       returnType: node.type
         ? checker.typeToString(checker.getTypeAtLocation(node.type))
         : returnType,
-      isAsync:
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.AsyncKeyword
-        ) || false,
-      isGenerator: isGenerator, // Добавляем флаг генератора
-      isDefault: isDefault, // Добавляем флаг экспорта по умолчанию
-      isExported:
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.ExportKeyword
-        ) ||
-        false ||
-        isModuleMember,
-      isDeclared:
-        isParentDeclared ||
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.DeclareKeyword
-        ) ||
-        false,
+      isAsync: modifiers.isAsync,
+      isGenerator: modifiers.isGenerator,
+      isDefault: modifiers.isDefault,
+      isExported: modifiers.isExported,
+      isDeclared: modifiers.isDeclared,
       decorators: decorators.length > 0 ? decorators : undefined,
       // TODO: generics, overloads, body
     };
@@ -196,46 +202,22 @@ function parseSimpleVariableStatement(
   isParentDeclared,
   isModuleMember = false
 ) {
-  const isExported =
-    node.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.ExportKeyword) ||
-    false ||
-    isModuleMember;
-  const isDeclared =
-    isParentDeclared ||
-    node.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.DeclareKeyword) ||
-    false;
+  const modifiers = getCommonModifiers(node, isParentDeclared, isModuleMember);
 
   node.declarationList.declarations.forEach((declaration) => {
     if (declaration.name?.kind === ts.SyntaxKind.Identifier) {
       const varName = declaration.name.text;
-      let varType = "any";
-      if (declaration.type) {
-        varType = checker.typeToString(
-          checker.getTypeAtLocation(declaration.type)
-        );
-      } else if (declaration.initializer) {
-        varType = checker.typeToString(
-          checker.getTypeAtLocation(declaration.initializer)
-        );
-      }
-
-      // Определяем тип объявления переменной
-      let declarationType = "var"; // по умолчанию
-      if ((node.declarationList.flags & ts.NodeFlags.Const) !== 0) {
-        declarationType = "const";
-      } else if ((node.declarationList.flags & ts.NodeFlags.Let) !== 0) {
-        declarationType = "let";
-      }
+      const varType = getVariableType(declaration, checker);
 
       context.variables[varName] = {
         name: varName,
         type: varType,
-        isConst: (node.declarationList.flags & ts.NodeFlags.Const) !== 0,
-        declarationType: declarationType, // Добавляем тип объявления (var/let/const)
+        isConst: isConstVariable(node),
+        declarationType: getDeclarationType(node),
         hasInitializer: !!declaration.initializer,
         initializerValue: declaration.initializer?.getText(),
-        isExported: isExported,
-        isDeclared: isDeclared,
+        isExported: modifiers.isExported,
+        isDeclared: modifiers.isDeclared,
         // Поля для обратной совместимости со старыми тестами
         types: [varType], // старые тесты ожидают массив типов
         value: declaration.initializer?.getText()?.replace(/['"]/g, "") || "", // старые тесты ожидают значение без кавычек
@@ -277,34 +259,67 @@ function parseSimpleClassDeclaration(
       });
     }
 
-    // Анализируем модификаторы класса
-    const isAbstract =
-      node.modifiers?.some(
-        (mod) => mod.kind === ts.SyntaxKind.AbstractKeyword
-      ) || false;
+    const modifiers = getCommonModifiers(
+      node,
+      isParentDeclared,
+      isModuleMember
+    );
+    const classMembers = {};
+
+    const extendsClause = node.heritageClauses?.find(
+      (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+    );
+    const extendedClasses = extendsClause
+      ? extendsClause.types.map((type) => type.getText())
+      : [];
 
     context.classes[className] = {
       name: className,
       properties: {},
       methods: {},
-      constructorDef: null,
-      isExported:
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.ExportKeyword
-        ) ||
-        false ||
-        isModuleMember,
-      isDeclared:
-        isParentDeclared ||
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.DeclareKeyword
-        ) ||
-        false,
-      isAbstract: isAbstract, // Добавляем флаг абстрактного класса
+      isExported: modifiers.isExported,
+      isDeclared: modifiers.isDeclared,
+      isAbstract: modifiers.isAbstract,
       decorators: decorators.length > 0 ? decorators : undefined,
       extends: extendedTypes.length > 0 ? extendedTypes : undefined,
       implements: implementedTypes.length > 0 ? implementedTypes : undefined,
+      // Добавляем обратную совместимость с расширенными классами в старом формате
+      ...(extendedClasses.length > 0 ? { extendedClasses } : {}),
     };
+
+    // Обработка конструкторов в старом стиле для обратной совместимости
+    const constructors = node.members.filter((member) =>
+      ts.isConstructorDeclaration(member)
+    );
+
+    if (constructors.length > 0) {
+      constructors.forEach((constructor, index) => {
+        const constructorParams = constructor.parameters.map((param) =>
+          createOldFormatConstructorParam(param, checker)
+        );
+
+        if (constructor.body) {
+          // Основная реализация конструктора
+          classMembers["constructor"] = {
+            params: constructorParams,
+            body: constructor.body.getText(),
+          };
+          context.classes[className]["constructor"] = {
+            params: constructorParams,
+            body: constructor.body.getText(),
+          };
+        } else {
+          // Сигнатура конструктора (перегрузка)
+          const signatureName = `constructorSignature${index}`;
+          classMembers[signatureName] = {
+            params: constructorParams,
+          };
+          context.classes[className][signatureName] = {
+            params: constructorParams,
+          };
+        }
+      });
+    }
 
     node.members?.forEach((member) => {
       const memberName = member.name?.getText();
@@ -312,82 +327,35 @@ function parseSimpleClassDeclaration(
       const memberDecorators = parseDecorators(member);
 
       if (ts.isPropertyDeclaration(member)) {
-        // Определяем модификаторы доступа
-        let accessModifier = "public"; // по умолчанию public
-        if (
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.PrivateKeyword
-          )
-        ) {
-          accessModifier = "private";
-        } else if (
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.ProtectedKeyword
-          )
-        ) {
-          accessModifier = "protected";
-        }
+        const memberModifiers = getCommonModifiers(member);
 
-        const isAbstract =
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.AbstractKeyword
-          ) || false;
-
-        const isOverride =
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.OverrideKeyword
-          ) || false;
+        const propertyType = member.type
+          ? checker.typeToString(checker.getTypeAtLocation(member.type))
+          : member.initializer
+          ? checker.typeToString(checker.getTypeAtLocation(member.initializer))
+          : "any";
 
         context.classes[className].properties[memberName] = {
           name: memberName,
-          type: member.type
-            ? checker.typeToString(checker.getTypeAtLocation(member.type))
-            : member.initializer
-            ? checker.typeToString(
-                checker.getTypeAtLocation(member.initializer)
-              )
-            : "any",
-          isStatic:
-            member.modifiers?.some(
-              (mod) => mod.kind === ts.SyntaxKind.StaticKeyword
-            ) || false,
-          isReadonly:
-            member.modifiers?.some(
-              (mod) => mod.kind === ts.SyntaxKind.ReadonlyKeyword
-            ) || false,
-          accessModifier: accessModifier, // Добавляем модификатор доступа
-          isAbstract: isAbstract, // Добавляем флаг абстрактного свойства
-          isOverride: isOverride, // Добавляем флаг переопределения
+          type: propertyType,
+          isStatic: memberModifiers.isStatic,
+          isReadonly: memberModifiers.isReadonly,
+          accessModifier: memberModifiers.accessModifier,
+          isAbstract: memberModifiers.isAbstract,
+          isOverride: memberModifiers.isOverride,
           decorators:
             memberDecorators.length > 0 ? memberDecorators : undefined,
           initializer: member.initializer?.getText(),
         };
+
+        // Добавляем обратную совместимость - свойства прямо в класс
+        context.classes[className][memberName] = createOldFormatProperty(
+          propertyType,
+          memberModifiers.accessModifier,
+          member
+        );
       } else if (ts.isMethodDeclaration(member)) {
-        // Определяем модификаторы доступа для методов
-        let accessModifier = "public"; // по умолчанию public
-        if (
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.PrivateKeyword
-          )
-        ) {
-          accessModifier = "private";
-        } else if (
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.ProtectedKeyword
-          )
-        ) {
-          accessModifier = "protected";
-        }
-
-        const isAbstract =
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.AbstractKeyword
-          ) || false;
-
-        const isOverride =
-          member.modifiers?.some(
-            (mod) => mod.kind === ts.SyntaxKind.OverrideKeyword
-          ) || false;
+        const memberModifiers = getCommonModifiers(member);
 
         const methodSignature = checker.getSignatureFromDeclaration(member);
         context.classes[className].methods[memberName] = {
@@ -404,37 +372,13 @@ function parseSimpleClassDeclaration(
           returnType: methodSignature
             ? checker.typeToString(methodSignature.getReturnType())
             : "any",
-          isStatic:
-            member.modifiers?.some(
-              (mod) => mod.kind === ts.SyntaxKind.StaticKeyword
-            ) || false,
-          isAsync:
-            member.modifiers?.some(
-              (mod) => mod.kind === ts.SyntaxKind.AsyncKeyword
-            ) || false,
-          accessModifier: accessModifier, // Добавляем модификатор доступа
-          isAbstract: isAbstract, // Добавляем флаг абстрактного метода
-          isOverride: isOverride, // Добавляем флаг переопределения
+          isStatic: memberModifiers.isStatic,
+          isAsync: memberModifiers.isAsync,
+          accessModifier: memberModifiers.accessModifier,
+          isAbstract: memberModifiers.isAbstract,
+          isOverride: memberModifiers.isOverride,
           decorators:
             memberDecorators.length > 0 ? memberDecorators : undefined,
-        };
-      } else if (ts.isConstructorDeclaration(member)) {
-        context.classes[className].constructorDef = {
-          parameters:
-            member.parameters?.map((param) => ({
-              name: param.name?.getText() || "",
-              type: param.type
-                ? checker.typeToString(checker.getTypeAtLocation(param.type))
-                : "any",
-              optional: !!param.questionToken,
-              initializer: param.initializer?.getText(),
-              decorators:
-                parseDecorators(param).length > 0
-                  ? parseDecorators(param)
-                  : undefined,
-            })) || [],
-          decorators:
-            memberDecorators.length > 0 ? memberDecorators : undefined, // Decorators on constructor itself
         };
       }
     });
@@ -464,22 +408,18 @@ function parseSimpleInterfaceDeclaration(
       });
     }
 
+    const modifiers = getCommonModifiers(
+      node,
+      isParentDeclared,
+      isModuleMember
+    );
+
     context.interfaces[interfaceName] = {
       name: interfaceName,
       properties: {},
       methods: {},
-      isExported:
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.ExportKeyword
-        ) ||
-        false ||
-        isModuleMember,
-      isDeclared:
-        isParentDeclared ||
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.DeclareKeyword
-        ) ||
-        false,
+      isExported: modifiers.isExported,
+      isDeclared: modifiers.isDeclared,
       extends: extendedTypes.length > 0 ? extendedTypes : undefined,
     };
 
@@ -529,22 +469,18 @@ function parseSimpleTypeAliasDeclaration(
       checker.getTypeAtLocation(node.type)
     );
 
+    const modifiers = getCommonModifiers(
+      node,
+      isParentDeclared,
+      isModuleMember
+    );
+
     // Базовая информация о типе
     const typeInfo = {
       name: typeName,
       definition: typeDefinition,
-      isExported:
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.ExportKeyword
-        ) ||
-        false ||
-        isModuleMember,
-      isDeclared:
-        isParentDeclared ||
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.DeclareKeyword
-        ) ||
-        false,
+      isExported: modifiers.isExported,
+      isDeclared: modifiers.isDeclared,
     };
 
     // Детальный анализ для гибридных типов (функция + свойства)
@@ -635,15 +571,15 @@ function parseSimpleEnumDeclaration(
 ) {
   if (node.name) {
     const enumName = node.name.text;
-
-    // Проверяем, является ли enum константным (const enum)
-    const isConst =
-      node.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.ConstKeyword) ||
-      false;
+    const modifiers = getCommonModifiers(
+      node,
+      isParentDeclared,
+      isModuleMember
+    );
 
     context.enums[enumName] = {
       name: enumName,
-      isConst: isConst, // Добавляем флаг для различения const enum от обычного enum
+      isConst: modifiers.isConst,
       members:
         node.members?.map((member) => {
           const memberName = member.name.getText();
@@ -653,18 +589,8 @@ function parseSimpleEnumDeclaration(
           }
           return { name: memberName, value: memberValue };
         }) || [],
-      isExported:
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.ExportKeyword
-        ) ||
-        false ||
-        isModuleMember,
-      isDeclared:
-        isParentDeclared ||
-        node.modifiers?.some(
-          (mod) => mod.kind === ts.SyntaxKind.DeclareKeyword
-        ) ||
-        false,
+      isExported: modifiers.isExported,
+      isDeclared: modifiers.isDeclared,
     };
   }
 }

@@ -1,5 +1,6 @@
 const t = require("@babel/types");
 const { getTSType, getTypeFromFCAnnotation } = require("./types");
+const { getCommonModifiers } = require("./common-utils");
 const { getReturnJSXCode } = require("../../../utils/jsxUtils");
 const { getComponentHooks } = require("./hooks");
 
@@ -80,7 +81,7 @@ function processFunctionalComponent(path, code, result) {
     props: props,
     returnType: returnType,
     body: code.slice(initNode.body.start, initNode.body.end),
-    isExported: path.parent.parent.type === "ExportNamedDeclaration",
+    isExported: getCommonModifiers(path.node, path).isExported,
   };
 
   // Добавляем компонент в результаты
@@ -157,7 +158,7 @@ function processFunctionDeclarationComponent(path, code, result) {
     props: props,
     returnType: returnType,
     body: code.slice(path.node.body.start, path.node.body.end),
-    isExported: path.parent.type === "ExportNamedDeclaration",
+    isExported: getCommonModifiers(path.node, path).isExported,
   };
 
   // Добавляем компонент в результаты
@@ -237,7 +238,7 @@ function processClassComponent(path, code, result) {
     propsType: propsType,
     stateType: stateType,
     methods: methods,
-    isExported: path.parent.type === "ExportNamedDeclaration",
+    isExported: getCommonModifiers(path.node, path).isExported,
   };
 
   // Добавляем компонент в результаты

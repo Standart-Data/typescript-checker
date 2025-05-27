@@ -19,6 +19,11 @@ const {
 const { isHookCall, processHook } = require("./hooks");
 
 const { getTSType, getType } = require("./types");
+const {
+  getCommonModifiers,
+  getAccessModifier,
+  createOldFormatProperty,
+} = require("./common-utils");
 
 /**
  * Обрабатывает декораторы в React компонентах
@@ -225,7 +230,7 @@ function parseReact(filePaths) {
             properties: properties,
             extendedBy: [],
             isDeclared: isDeclarationFile,
-            isExported: path.parent.type === "ExportNamedDeclaration",
+            isExported: getCommonModifiers(path.node, path).isExported,
           };
         },
         TSTypeAliasDeclaration(path) {
@@ -280,7 +285,7 @@ function parseReact(filePaths) {
             name: enumName,
             isConst: isConst, // Добавляем флаг для различения const enum от обычного enum
             members: members,
-            isExported: path.parent.type === "ExportNamedDeclaration",
+            isExported: getCommonModifiers(path.node, path).isExported,
             isDeclared: isDeclarationFile,
           };
         },
@@ -539,8 +544,7 @@ function parseReact(filePaths) {
                 : undefined,
               declarationType: declarationType, // Добавляем тип объявления
               isDeclared: false,
-              isExported:
-                path.parent?.parent?.type === "ExportNamedDeclaration",
+              isExported: getCommonModifiers(path.node, path).isExported,
             };
           } else {
             // Переменная без инициализации
@@ -566,8 +570,7 @@ function parseReact(filePaths) {
               value: undefined,
               declarationType: declarationType, // Добавляем тип объявления
               isDeclared: false,
-              isExported:
-                path.parent?.parent?.type === "ExportNamedDeclaration",
+              isExported: getCommonModifiers(path.node, path).isExported,
             };
           }
         },
@@ -581,8 +584,7 @@ function parseReact(filePaths) {
             // Получаем декораторы класса
             const classDecorators = parseDecorators(path);
 
-            // Анализируем модификаторы класса
-            const isAbstract = path.node.abstract || false;
+            const classModifiers = getCommonModifiers(path.node, path);
 
             const classInfo = {
               methods: {},
@@ -590,8 +592,8 @@ function parseReact(filePaths) {
               constructors: {},
               extendsClass: "React.Component",
               jsx: true,
-              isExported: path.parent?.type === "ExportNamedDeclaration",
-              isAbstract: isAbstract, // Добавляем флаг абстрактного класса
+              isExported: classModifiers.isExported,
+              isAbstract: classModifiers.isAbstract,
             };
 
             // Обрабатываем методы и свойства класса для получения их декораторов
@@ -603,19 +605,9 @@ function parseReact(filePaths) {
 
               if (t.isClassMethod(classMember) && classMember.key) {
                 const methodName = classMember.key.name;
-
-                // Определяем модификаторы доступа для методов
-                let accessModifier = "public"; // по умолчанию public
-                if (classMember.accessibility === "private") {
-                  accessModifier = "private";
-                } else if (classMember.accessibility === "protected") {
-                  accessModifier = "protected";
-                }
-
-                const isStatic = classMember.static || false;
-                const isAsync = classMember.async || false;
-                const isAbstract = classMember.abstract || false;
-                const isOverride = classMember.override || false;
+                const methodModifiers = getCommonModifiers(classMember, {
+                  parent: path,
+                });
 
                 // Добавляем метод, если его еще нет
                 if (!classInfo.methods[methodName]) {
@@ -623,11 +615,11 @@ function parseReact(filePaths) {
                     returnType: classMember.returnType
                       ? safeGetTSType(classMember.returnType.typeAnnotation)
                       : "any",
-                    accessModifier: accessModifier, // Добавляем модификатор доступа
-                    isStatic: isStatic, // Добавляем флаг статического метода
-                    isAsync: isAsync, // Добавляем флаг асинхронного метода
-                    isAbstract: isAbstract, // Добавляем флаг абстрактного метода
-                    isOverride: isOverride, // Добавляем флаг переопределения
+                    accessModifier: methodModifiers.accessModifier,
+                    isStatic: methodModifiers.isStatic,
+                    isAsync: methodModifiers.isAsync,
+                    isAbstract: methodModifiers.isAbstract,
+                    isOverride: methodModifiers.isOverride,
                   };
                 }
 
@@ -657,30 +649,20 @@ function parseReact(filePaths) {
                 }
               } else if (t.isClassProperty(classMember) && classMember.key) {
                 const propertyName = classMember.key.name;
-
-                // Определяем модификаторы доступа для свойств
-                let accessModifier = "public"; // по умолчанию public
-                if (classMember.accessibility === "private") {
-                  accessModifier = "private";
-                } else if (classMember.accessibility === "protected") {
-                  accessModifier = "protected";
-                }
-
-                const isStatic = classMember.static || false;
-                const isReadonly = classMember.readonly || false;
-                const isAbstract = classMember.abstract || false;
-                const isOverride = classMember.override || false;
+                const propertyModifiers = getCommonModifiers(classMember, {
+                  parent: path,
+                });
 
                 // Добавляем свойство
                 classInfo.fields[propertyName] = {
                   type: classMember.typeAnnotation
                     ? safeGetTSType(classMember.typeAnnotation.typeAnnotation)
                     : "any",
-                  accessModifier: accessModifier, // Добавляем модификатор доступа
-                  isStatic: isStatic, // Добавляем флаг статического свойства
-                  isReadonly: isReadonly, // Добавляем флаг readonly
-                  isAbstract: isAbstract, // Добавляем флаг абстрактного свойства
-                  isOverride: isOverride, // Добавляем флаг переопределения
+                  accessModifier: propertyModifiers.accessModifier,
+                  isStatic: propertyModifiers.isStatic,
+                  isReadonly: propertyModifiers.isReadonly,
+                  isAbstract: propertyModifiers.isAbstract,
+                  isOverride: propertyModifiers.isOverride,
                 };
 
                 // Добавляем декораторы свойства
@@ -725,7 +707,7 @@ function parseReact(filePaths) {
               body:
                 path.node.body &&
                 code.slice(path.node.body.start, path.node.body.end),
-              isExported: path.parent?.type === "ExportNamedDeclaration",
+              isExported: getCommonModifiers(path.node, path).isExported,
             };
 
             // Добавляем декораторы функции

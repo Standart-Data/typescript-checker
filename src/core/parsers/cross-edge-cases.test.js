@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseTypeScript } from "./typescript";
-import { parseReact } from "./react/parseReact";
+import { parseReact } from "./react";
 import { createTempFileWithContent, cleanupTempDir } from "../tests/testUtils";
 
 describe("Cross-Parser Edge Cases", () => {
@@ -297,6 +297,179 @@ describe("Cross-Parser Edge Cases", () => {
       reactContent: `declare function globalFunction(): void;`,
       check: (tsResult, reactResult) => {
         expect(tsResult.functions.globalFunction?.isDeclared).toBe(true);
+      },
+    },
+
+    // === РАСШИРЕННЫЕ КЛАССЫ ===
+    {
+      name: "Abstract Class with Complex Inheritance",
+      tsContent: `
+        abstract class AbstractComponent {
+          abstract render(): void;
+          protected state: any = {};
+        }
+        
+        interface IClickable {
+          onClick(): void;
+        }
+        
+        export class Button extends AbstractComponent implements IClickable {
+          label: string = "Click me";
+          
+          constructor(private service: any) {
+            super();
+          }
+          
+          render(): void {
+            console.log("Rendering button");
+          }
+          
+          onClick(): void {
+            console.log("Button clicked");
+          }
+          
+          static create(label: string): Button {
+            return new Button(null);
+          }
+        }
+      `,
+      reactContent: `
+        abstract class AbstractComponent {
+          abstract render(): void;
+          protected state: any = {};
+        }
+        
+        interface IClickable {
+          onClick(): void;
+        }
+        
+        export class Button extends AbstractComponent implements IClickable {
+          label: string = "Click me";
+          
+          constructor(private service: any) {
+            super();
+          }
+          
+          render(): void {
+            console.log("Rendering button");
+          }
+          
+          onClick(): void {
+            console.log("Button clicked");
+          }
+          
+          static create(label: string): Button {
+            return new Button(null);
+          }
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        const abstractClass = tsResult.classes.AbstractComponent;
+        expect(abstractClass.isAbstract).toBe(true);
+        expect(abstractClass.isExported).toBe(false);
+
+        const buttonClass = tsResult.classes.Button;
+        expect(buttonClass).toBeDefined();
+        expect(buttonClass.isExported).toBe(true);
+        expect(buttonClass.extends).toEqual(["AbstractComponent"]);
+        expect(buttonClass.implements).toEqual(["IClickable"]);
+        expect(buttonClass.extendedClasses).toEqual(["AbstractComponent"]);
+
+        // Проверяем свойства в старом формате
+        expect(buttonClass.label).toBeDefined();
+        expect(buttonClass.label.modificator).toBe("opened");
+        expect(buttonClass.label.value).toBe("Click me");
+
+        // Проверяем новый формат
+        expect(buttonClass.properties.label).toBeDefined();
+        expect(buttonClass.properties.label.accessModifier).toBe("public");
+
+        // Проверяем методы
+        expect(buttonClass.methods.render).toBeDefined();
+        expect(buttonClass.methods.onClick).toBeDefined();
+        expect(buttonClass.methods.create.isStatic).toBe(true);
+
+        // React парсер должен экспортировать класс
+        expect(reactResult.exports.Button).toBe(true);
+      },
+    },
+
+    // === NAMESPACE С ВЛОЖЕННЫМИ СТРУКТУРАМИ ===
+    {
+      name: "Nested Namespace Structures",
+      tsContent: `
+        export namespace API {
+          export interface Response<T> {
+            data: T;
+            status: number;
+          }
+          
+          export namespace V1 {
+            export function get<T>(url: string): Promise<Response<T>> {
+              return fetch(url).then(r => r.json());
+            }
+            
+            export const baseUrl = "https://api.v1.example.com";
+          }
+          
+          export namespace V2 {
+            export function get<T>(url: string): Promise<Response<T>> {
+              return fetch(url).then(r => r.json());
+            }
+            
+            export const baseUrl = "https://api.v2.example.com";
+          }
+        }
+        
+        namespace Internal {
+          export function helper(): void {}
+        }
+      `,
+      reactContent: `
+        export namespace API {
+          export interface Response<T> {
+            data: T;
+            status: number;
+          }
+          
+          export namespace V1 {
+            export function get<T>(url: string): Promise<Response<T>> {
+              return fetch(url).then(r => r.json());
+            }
+            
+            export const baseUrl = "https://api.v1.example.com";
+          }
+          
+          export namespace V2 {
+            export function get<T>(url: string): Promise<Response<T>> {
+              return fetch(url).then(r => r.json());
+            }
+            
+            export const baseUrl = "https://api.v2.example.com";
+          }
+        }
+        
+        namespace Internal {
+          export function helper(): void {}
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        // Проверяем основной namespace
+        expect(tsResult.namespaces.API).toBeDefined();
+        expect(tsResult.namespaces.API.isExported).toBe(true);
+
+        // Проверяем вложенные namespaces
+        expect(tsResult.namespaces.V1).toBeDefined();
+        expect(tsResult.namespaces.V1.isExported).toBe(true);
+        expect(tsResult.namespaces.V2).toBeDefined();
+        expect(tsResult.namespaces.V2.isExported).toBe(true);
+
+        // Проверяем внутренний namespace
+        expect(tsResult.namespaces.Internal).toBeDefined();
+        expect(tsResult.namespaces.Internal.isExported).toBe(false);
+
+        // React парсер должен экспортировать содержимое
+        expect(reactResult.exports.API).toBe(true);
       },
     },
 
