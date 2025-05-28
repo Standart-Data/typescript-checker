@@ -19,7 +19,21 @@
  */
 
 // Создайте здесь интерфейс ApiResponse
+interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message: string;
+}
 
 // Создайте здесь интерфейс RequestOptions
+interface RequestOptions {
+  headers?: Record<string, string>;
+  timeout?: number;
+  cache?: "default" | "no-cache" | "reload";
+}
 
 // Объявите здесь функцию fetchData
+declare function fetchData<T>(
+  url: string,
+  options?: RequestOptions
+): Promise<ApiResponse<T>>;

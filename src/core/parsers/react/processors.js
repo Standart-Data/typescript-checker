@@ -1,5 +1,5 @@
 const t = require("@babel/types");
-const { getTSType, getTypeFromFCAnnotation } = require("./types");
+const { getTSType, getTypeFromFCAnnotation, getType } = require("./types");
 const { getCommonModifiers } = require("./common-utils");
 const { getReturnJSXCode } = require("../../../utils/jsxUtils");
 const { getComponentHooks } = require("./hooks");
@@ -55,6 +55,9 @@ function processFunctionalComponent(path, code, result) {
       props.push({ name: propName, type: propType });
     } else if (t.isObjectPattern(propsParam)) {
       // Деструктуризация объекта { prop1, prop2 }
+      // Пытаемся получить типы из React.FC аннотации
+      const fcTypes = getTypeFromFCAnnotation(path.node);
+
       propsParam.properties.forEach((prop) => {
         if (t.isObjectProperty(prop) || t.isRestElement(prop)) {
           const propName = prop.key
@@ -62,9 +65,14 @@ function processFunctionalComponent(path, code, result) {
             : prop.argument
             ? prop.argument.name
             : "unknown";
-          const propType = prop.typeAnnotation
-            ? getTSType(prop.typeAnnotation.typeAnnotation)
-            : "any";
+
+          // Пытаемся получить тип из аннотации FC, иначе из самого параметра
+          let propType = "any";
+          if (fcTypes[propName]) {
+            propType = fcTypes[propName];
+          } else if (prop.typeAnnotation) {
+            propType = getTSType(prop.typeAnnotation.typeAnnotation);
+          }
 
           props.push({ name: propName, type: propType });
         }
@@ -75,12 +83,24 @@ function processFunctionalComponent(path, code, result) {
   // Определяем тип возвращаемого значения (JSX)
   let returnType = "JSX.Element";
 
+  // Получаем body из исходного кода
+  let bodyText = "";
+  if (
+    initNode.body &&
+    initNode.body.start !== undefined &&
+    initNode.body.end !== undefined
+  ) {
+    bodyText = code.slice(initNode.body.start, initNode.body.end);
+  } else {
+    bodyText = "/* function body */";
+  }
+
   // Создаем объект компонента
   const component = {
     type: "functional",
     props: props,
     returnType: returnType,
-    body: code.slice(initNode.body.start, initNode.body.end),
+    body: normalizeLineEndings(bodyText),
     isExported: getCommonModifiers(path.node, path).isExported,
   };
 
@@ -90,9 +110,15 @@ function processFunctionalComponent(path, code, result) {
   }
 
   result.functions[componentName] = {
-    params: props,
+    params: props.map((p) => ({
+      name: p.name,
+      type: [p.type], // type как массив для совместимости
+    })),
+    parameters: props, // новый формат с type как строка
     returnResult: [returnType],
+    returnType: returnType,
     jsx: true,
+    body: component.body,
   };
 
   // Если компонент экспортируется, добавляем его в exports
@@ -152,12 +178,24 @@ function processFunctionDeclarationComponent(path, code, result) {
     returnType = getTSType(path.node.returnType.typeAnnotation);
   }
 
+  // Получаем body из исходного кода
+  let bodyText = "";
+  if (
+    path.node.body &&
+    path.node.body.start !== undefined &&
+    path.node.body.end !== undefined
+  ) {
+    bodyText = code.slice(path.node.body.start, path.node.body.end);
+  } else {
+    bodyText = "/* function body */";
+  }
+
   // Создаем объект компонента
   const component = {
     type: "functional",
     props: props,
     returnType: returnType,
-    body: code.slice(path.node.body.start, path.node.body.end),
+    body: normalizeLineEndings(bodyText),
     isExported: getCommonModifiers(path.node, path).isExported,
   };
 
@@ -167,9 +205,15 @@ function processFunctionDeclarationComponent(path, code, result) {
   }
 
   result.functions[componentName] = {
-    params: props,
+    params: props.map((p) => ({
+      name: p.name,
+      type: [p.type], // type как массив для совместимости
+    })),
+    parameters: props, // новый формат с type как строка
     returnResult: [returnType],
+    returnType: returnType,
     jsx: true,
+    body: component.body,
   };
 
   // Если компонент экспортируется, добавляем его в exports
@@ -213,10 +257,31 @@ function processClassComponent(path, code, result) {
   // Собираем методы класса
   const methods = {};
   path.node.body.body.forEach((member) => {
-    if (t.isClassMethod(member) && !t.isConstructor(member)) {
+    if (t.isClassMethod(member) && member.kind !== "constructor") {
       const methodName = member.key.name || member.key.value;
+
+      // Получаем body из исходного кода
+      let bodyText = "";
+      if (
+        member.body &&
+        member.body.start !== undefined &&
+        member.body.end !== undefined
+      ) {
+        bodyText = code.slice(member.body.start, member.body.end);
+      } else {
+        bodyText = "/* method body */";
+      }
+
       methods[methodName] = {
         params: member.params.map((param) => {
+          const paramName = param.name || (param.left && param.left.name);
+          const paramType = param.typeAnnotation
+            ? getTSType(param.typeAnnotation.typeAnnotation)
+            : "any";
+
+          return { name: paramName, type: [paramType] };
+        }),
+        parameters: member.params.map((param) => {
           const paramName = param.name || (param.left && param.left.name);
           const paramType = param.typeAnnotation
             ? getTSType(param.typeAnnotation.typeAnnotation)
@@ -227,7 +292,12 @@ function processClassComponent(path, code, result) {
         returnType: member.returnType
           ? getTSType(member.returnType.typeAnnotation)
           : "any",
-        body: code.slice(member.body.start, member.body.end),
+        returnResult: [
+          member.returnType
+            ? getTSType(member.returnType.typeAnnotation)
+            : "any",
+        ],
+        body: normalizeLineEndings(bodyText),
       };
     }
   });
@@ -356,6 +426,12 @@ function getClassComponentState(path) {
   return state;
 }
 
+// Функция для нормализации line endings к Windows-style (CRLF)
+function normalizeLineEndings(text) {
+  if (!text) return text;
+  return text.replace(/\r?\n/g, "\r\n");
+}
+
 module.exports = {
   processFunctionalComponent,
   processFunctionDeclarationComponent,
@@ -364,4 +440,5 @@ module.exports = {
   getClassComponentProps,
   getClassComponentState,
   getReturnStatement,
+  normalizeLineEndings,
 };

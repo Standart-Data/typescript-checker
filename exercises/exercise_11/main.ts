@@ -12,12 +12,12 @@ class Window {
 }
 
 class Icon {
-  #id: number;
-  _name = 'window';
+  private id: number;
+  protected name = "window";
   title: string;
 
   constructor(id: number, title: any) {
-    this.#id = id;
+    this.id = id;
     this.title = title;
   }
 }

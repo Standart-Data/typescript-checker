@@ -5,11 +5,11 @@ import type { FunctionComponent } from "react";
 interface GreetingProps {
   name: string;
   age: number;
-  isActive: number;
+  isActive?: boolean;
 }
 
 // Используйте интерфейс для типизации компонента
-const Greeting = (props) => {
+const Greeting: FunctionComponent<GreetingProps> = (props) => {
   return (
     <div>
       <h1>Привет, {props.name}!</h1>

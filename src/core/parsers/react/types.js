@@ -170,7 +170,71 @@ function getType(node) {
   return "unknown";
 }
 
+/**
+ * Получает типы пропсов из React.FC аннотации
+ * @param {Object} node - Узел с типизацией React.FC<Props>
+ * @returns {Object} Объект с типами пропсов
+ */
+function getTypeFromFCAnnotation(node) {
+  // Ищем аннотацию типа в узле переменной
+  if (
+    node.id &&
+    node.id.typeAnnotation &&
+    node.id.typeAnnotation.typeAnnotation
+  ) {
+    const typeAnnotation = node.id.typeAnnotation.typeAnnotation;
+
+    // Проверяем если это React.FC<Props>
+    if (t.isTSTypeReference(typeAnnotation)) {
+      if (typeAnnotation.typeName) {
+        // Проверяем если это React.FC или FC
+        let isFC = false;
+        if (
+          t.isIdentifier(typeAnnotation.typeName) &&
+          typeAnnotation.typeName.name === "FC"
+        ) {
+          isFC = true;
+        } else if (t.isTSQualifiedName(typeAnnotation.typeName)) {
+          const qualified = typeAnnotation.typeName;
+          if (
+            qualified.left.name === "React" &&
+            qualified.right.name === "FC"
+          ) {
+            isFC = true;
+          }
+        }
+
+        if (
+          isFC &&
+          typeAnnotation.typeParameters &&
+          typeAnnotation.typeParameters.params[0]
+        ) {
+          const propsType = typeAnnotation.typeParameters.params[0];
+
+          // Если тип пропсов - это объектный литерал {name: string, age: number}
+          if (t.isTSTypeLiteral(propsType)) {
+            const propsInfo = {};
+            propsType.members.forEach((member) => {
+              if (t.isTSPropertySignature(member)) {
+                const propName = member.key.name || member.key.value;
+                const propType = member.typeAnnotation
+                  ? getTSType(member.typeAnnotation.typeAnnotation)
+                  : "any";
+                propsInfo[propName] = propType;
+              }
+            });
+            return propsInfo;
+          }
+        }
+      }
+    }
+  }
+
+  return {};
+}
+
 module.exports = {
   getTSType,
   getType,
+  getTypeFromFCAnnotation,
 };

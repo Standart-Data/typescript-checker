@@ -13,8 +13,16 @@
  */
 
 // Создайте здесь интерфейс User
+interface User {
+  id: number;
+  name: string;
+  email?: string;
+}
 
 // Создайте здесь тип UserRole
+type UserRole = "admin" | "editor" | "viewer";
 
 // Добавьте поле role в интерфейс User
-interface UserWithRole extends User {}
+interface UserWithRole extends User {
+  role: UserRole;
+}

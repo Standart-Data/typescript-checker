@@ -271,12 +271,10 @@ describe("Cross-Parser Edge Cases", () => {
       reactContent: `import * as React from 'react';`,
       check: (tsResult, reactResult) => {
         expect(tsResult.imports.react).toBeDefined();
-        expect(reactResult.imports.length).toBeGreaterThan(0);
+        expect(reactResult.imports.react).toBeDefined();
 
-        const reactImport = reactResult.imports.find(
-          (imp) => imp.path === "react"
-        );
-        expect(reactImport).toBeDefined();
+        // Оба парсера теперь используют одинаковую структуру
+        // Проверяем, что импорт обработан
       },
     },
 

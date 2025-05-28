@@ -246,15 +246,28 @@ function createOldFormatConstructorParam(param, checker) {
  * @param {string} propertyType - тип свойства
  * @param {string} accessModifier - модификатор доступа
  * @param {ts.Node} member - член класса (для получения initializer)
+ * @param {boolean} isReadonly - является ли свойство readonly
  * @returns {Object} свойство в старом формате
  */
-function createOldFormatProperty(propertyType, accessModifier, member) {
+function createOldFormatProperty(
+  propertyType,
+  accessModifier,
+  member,
+  isReadonly = false
+) {
+  let modificator = getOldFormatModifier(accessModifier);
+
+  // Если свойство readonly, это переопределяет модификатор доступа
+  if (isReadonly) {
+    modificator = "readonly";
+  }
+
   return {
     types: [propertyType],
-    modificator: getOldFormatModifier(accessModifier),
+    modificator: modificator,
     value: member.initializer
       ? member.initializer.getText().replace(/['"]/g, "")
-      : "",
+      : null, // Возвращаем null вместо пустой строки для совместимости
   };
 }
 
