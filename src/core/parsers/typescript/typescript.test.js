@@ -42,6 +42,152 @@ describe("parseTypeScript", () => {
     cleanupTempDir(tempFile);
   });
 
+  it("should parse arrow function assigned to const variable", () => {
+    const content = `
+      export const arrowFunc = (x: number, y: number): number => x + y;
+      const internalArrow: (name: string) => string = (name) => \`Hello, \${name}\`;
+    `;
+    const tempFile = createTempFileWithContent(content);
+    const result = parseTypeScript([tempFile]);
+
+    // Проверяем что функция попадает в variables
+    expect(result.variables.arrowFunc).toBeDefined();
+    expect(result.variables.arrowFunc.isConst).toBe(true);
+    expect(result.variables.arrowFunc.declarationType).toBe("const");
+    expect(result.variables.arrowFunc.isExported).toBe(true);
+
+    // И также дублируется в functions
+    expect(result.functions.arrowFunc).toBeDefined();
+    expect(result.functions.arrowFunc.isExported).toBe(true);
+    expect(result.functions.arrowFunc.parameters).toBeDefined();
+    expect(result.functions.arrowFunc.parameters.length).toBe(2);
+    expect(result.functions.arrowFunc.parameters[0].name).toBe("x");
+    expect(result.functions.arrowFunc.parameters[0].type).toBe("number");
+    expect(result.functions.arrowFunc.parameters[1].name).toBe("y");
+    expect(result.functions.arrowFunc.parameters[1].type).toBe("number");
+    expect(result.functions.arrowFunc.returnType).toBe("number");
+
+    // Проверяем внутреннюю функцию
+    expect(result.variables.internalArrow).toBeDefined();
+    expect(result.variables.internalArrow.isExported).toBe(false);
+    expect(result.functions.internalArrow).toBeDefined();
+    expect(result.functions.internalArrow.isExported).toBe(false);
+
+    cleanupTempDir(tempFile);
+  });
+
+  it("should parse function expression assigned to const variable", () => {
+    const content = `
+      export const funcExpr = function(message: string): void { 
+        console.log(message); 
+      };
+      const namedFuncExpr = function helper(n: number): number {
+        return n > 0 ? n * helper(n - 1) : 1;
+      };
+    `;
+    const tempFile = createTempFileWithContent(content);
+    const result = parseTypeScript([tempFile]);
+
+    // Проверяем function expression
+    expect(result.variables.funcExpr).toBeDefined();
+    expect(result.variables.funcExpr.isConst).toBe(true);
+    expect(result.variables.funcExpr.isExported).toBe(true);
+
+    expect(result.functions.funcExpr).toBeDefined();
+    expect(result.functions.funcExpr.isExported).toBe(true);
+    expect(result.functions.funcExpr.parameters).toBeDefined();
+    expect(result.functions.funcExpr.parameters.length).toBe(1);
+    expect(result.functions.funcExpr.parameters[0].name).toBe("message");
+    expect(result.functions.funcExpr.parameters[0].type).toBe("string");
+    expect(result.functions.funcExpr.returnType).toBe("void");
+
+    // Проверяем named function expression
+    expect(result.variables.namedFuncExpr).toBeDefined();
+    expect(result.functions.namedFuncExpr).toBeDefined();
+
+    cleanupTempDir(tempFile);
+  });
+
+  it("should parse typed function variable with functional type", () => {
+    const content = `
+      type Calculator = (a: number, b: number) => number;
+      export const addFunc: Calculator = (x, y) => x + y;
+      
+      type Greeting = {
+        defaultName: string;
+        setDefaultName: (newName: string) => void;
+      } & ((name?: string) => string);
+      
+      export const greetFunc: Greeting = (name) => \`Hello, \${name || greetFunc.defaultName}\`;
+      greetFunc.defaultName = "Func";
+      greetFunc.setDefaultName = (anotherName) => {};
+    `;
+    const tempFile = createTempFileWithContent(content);
+    const result = parseTypeScript([tempFile]);
+
+    // Проверяем типы
+    expect(result.types.Calculator).toBeDefined();
+    expect(result.types.Greeting).toBeDefined();
+    expect(result.types.Greeting.type).toBe("function");
+    expect(result.types.Greeting.properties).toBeDefined();
+    expect(result.types.Greeting.properties.defaultName).toBe("string");
+
+    // Проверяем простую типизированную функцию
+    expect(result.variables.addFunc).toBeDefined();
+    expect(result.variables.addFunc.type).toBe("Calculator");
+    expect(result.functions.addFunc).toBeDefined();
+    expect(result.functions.addFunc.types[0]).toBe("Calculator");
+
+    // Проверяем гибридный тип с properties
+    expect(result.variables.greetFunc).toBeDefined();
+    expect(result.variables.greetFunc.type).toBe("Greeting");
+    expect(result.functions.greetFunc).toBeDefined();
+    expect(result.functions.greetFunc.types[0]).toBe("Greeting");
+
+    // Проверяем свойства добавленные через assignment
+    expect(result.functions.greetFunc.defaultName).toBeDefined();
+    expect(result.functions.greetFunc.defaultName.value).toBe("Func");
+    expect(result.functions.greetFunc.setDefaultName).toBeDefined();
+
+    cleanupTempDir(tempFile);
+  });
+
+  it("should distinguish function variables from regular variables", () => {
+    const content = `
+      const regularVar: string = "not a function";
+      const regularNumber = 42;
+      const regularObject = { key: "value" };
+      
+      const arrowFunction = () => "function";
+      const funcExpression = function() { return "function"; };
+      const typedFunc: () => void = () => {};
+    `;
+    const tempFile = createTempFileWithContent(content);
+    const result = parseTypeScript([tempFile]);
+
+    // Обычные переменные не должны быть в functions
+    expect(result.variables.regularVar).toBeDefined();
+    expect(result.functions.regularVar).toBeUndefined();
+
+    expect(result.variables.regularNumber).toBeDefined();
+    expect(result.functions.regularNumber).toBeUndefined();
+
+    expect(result.variables.regularObject).toBeDefined();
+    expect(result.functions.regularObject).toBeUndefined();
+
+    // Функции должны быть и в variables и в functions
+    expect(result.variables.arrowFunction).toBeDefined();
+    expect(result.functions.arrowFunction).toBeDefined();
+
+    expect(result.variables.funcExpression).toBeDefined();
+    expect(result.functions.funcExpression).toBeDefined();
+
+    expect(result.variables.typedFunc).toBeDefined();
+    expect(result.functions.typedFunc).toBeDefined();
+
+    cleanupTempDir(tempFile);
+  });
+
   it("should parse class with constructor overloads (backward compatibility)", () => {
     const content = `
       class Computer {
@@ -906,6 +1052,76 @@ describe("parseTypeScript", () => {
         "Extract<AllTypes,string|number>"
       );
       expect(stringOrNumber.isExported).toBe(true);
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse hybrid types (intersection of object and function)", () => {
+      const content = `
+        type EventEmitter = {
+          on: (event: string, callback: Function) => void;
+          off: (event: string, callback: Function) => void;
+          listeners: string[];
+        } & ((event: string, ...args: any[]) => void);
+        
+        export type Playlist = {
+          title: string;
+          getPlaylist: () => string[];
+          clearPlaylist: () => void;
+          setPlaylist: (newSongs: string[]) => void;
+        } & ((song: string) => void);
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      // Проверяем EventEmitter
+      const eventEmitter = result.types.EventEmitter;
+      expect(eventEmitter).toBeDefined();
+      expect(eventEmitter.name).toBe("EventEmitter");
+      expect(eventEmitter.type).toBe("function");
+      expect(eventEmitter.isExported).toBe(false);
+
+      // Проверяем функциональную сигнатуру EventEmitter
+      expect(eventEmitter.params).toBeDefined();
+      expect(eventEmitter.params).toHaveLength(2);
+      expect(eventEmitter.params[0].name).toBe("event");
+      expect(eventEmitter.params[0].type).toBe("string");
+      expect(eventEmitter.params[1].name).toBe("args");
+      expect(eventEmitter.params[1].type).toBe("any[]");
+      expect(eventEmitter.returnType).toBe("void");
+
+      // Проверяем свойства EventEmitter
+      expect(eventEmitter.properties).toBeDefined();
+      expect(eventEmitter.properties.on).toContain(
+        "(event: string, callback: Function) => void"
+      );
+      expect(eventEmitter.properties.off).toContain(
+        "(event: string, callback: Function) => void"
+      );
+      expect(eventEmitter.properties.listeners).toBe("string[]");
+
+      // Проверяем Playlist
+      const playlist = result.types.Playlist;
+      expect(playlist).toBeDefined();
+      expect(playlist.name).toBe("Playlist");
+      expect(playlist.type).toBe("function");
+      expect(playlist.isExported).toBe(true);
+
+      // Проверяем функциональную сигнатуру Playlist
+      expect(playlist.params).toBeDefined();
+      expect(playlist.params).toHaveLength(1);
+      expect(playlist.params[0].name).toBe("song");
+      expect(playlist.params[0].type).toBe("string");
+      expect(playlist.returnType).toBe("void");
+
+      // Проверяем свойства Playlist
+      expect(playlist.properties).toBeDefined();
+      expect(playlist.properties.title).toBe("string");
+      expect(playlist.properties.getPlaylist).toContain("() => string[]");
+      expect(playlist.properties.clearPlaylist).toContain("() => void");
+      expect(playlist.properties.setPlaylist).toContain(
+        "(newSongs: string[]) => void"
+      );
 
       cleanupTempDir(tempFile);
     });

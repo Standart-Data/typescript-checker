@@ -741,5 +741,74 @@ describe("parseReact", () => {
 
       cleanupTempDir(tempFile);
     });
+
+    it("should parse hybrid types (intersection of object and function) in React files", () => {
+      const content = `
+        import React from 'react';
+        
+        type EventHandler = {
+          on: (event: string, callback: Function) => void;
+          off: (event: string, callback: Function) => void;
+          listeners: string[];
+        } & ((event: string, data: any) => void);
+        
+        export type MediaPlayer = {
+          title: string;
+          play: () => void;
+          pause: () => void;
+          setVolume: (volume: number) => void;
+        } & ((action: string) => void);
+        
+        const PlayerComponent: React.FC<{player: MediaPlayer}> = ({player}) => {
+          return <div>{player.title}</div>;
+        };
+      `;
+      const tempFile = createTempFileWithContent(content, ".tsx");
+      const result = parseReact([tempFile]);
+
+      // Проверяем EventHandler
+      const eventHandler = result.types.EventHandler;
+      expect(eventHandler).toBeDefined();
+      expect(eventHandler.name).toBe("EventHandler");
+      expect(eventHandler.type).toBe("function");
+      expect(eventHandler.isExported).toBe(false);
+
+      // Проверяем функциональную сигнатуру EventHandler
+      expect(eventHandler.params).toBeDefined();
+      expect(eventHandler.params).toHaveLength(2);
+      expect(eventHandler.params[0].name).toBe("event");
+      expect(eventHandler.params[1].name).toBe("data");
+      expect(eventHandler.returnType).toBeDefined();
+
+      // Проверяем свойства EventHandler
+      expect(eventHandler.properties).toBeDefined();
+      expect(eventHandler.properties.on).toBeDefined();
+      expect(eventHandler.properties.off).toBeDefined();
+      expect(eventHandler.properties.listeners).toBeDefined();
+
+      // Проверяем MediaPlayer
+      const mediaPlayer = result.types.MediaPlayer;
+      expect(mediaPlayer).toBeDefined();
+      expect(mediaPlayer.name).toBe("MediaPlayer");
+      expect(mediaPlayer.type).toBe("function");
+      expect(mediaPlayer.isExported).toBe(true);
+
+      // Проверяем функциональную сигнатуру MediaPlayer
+      expect(mediaPlayer.params).toBeDefined();
+      expect(mediaPlayer.params).toHaveLength(1);
+      expect(mediaPlayer.params[0].name).toBe("action");
+      expect(mediaPlayer.returnType).toBeDefined();
+
+      // Проверяем свойства MediaPlayer
+      expect(mediaPlayer.properties).toBeDefined();
+      expect(mediaPlayer.properties.title).toBeDefined();
+      expect(mediaPlayer.properties.play).toBeDefined();
+      expect(mediaPlayer.properties.pause).toBeDefined();
+      expect(mediaPlayer.properties.setVolume).toBeDefined();
+
+      expect(result.functions.PlayerComponent).toBeDefined();
+
+      cleanupTempDir(tempFile);
+    });
   });
 });

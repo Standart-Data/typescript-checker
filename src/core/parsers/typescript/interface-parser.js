@@ -45,6 +45,7 @@ function parseSimpleInterfaceDeclaration(
       isExported: modifiers.isExported,
       isDeclared: modifiers.isDeclared,
       extends: extendedTypes.length > 0 ? extendedTypes : undefined,
+      extendedBy: extendedTypes.length > 0 ? extendedTypes : undefined,
     };
 
     node.members?.forEach((member) => {

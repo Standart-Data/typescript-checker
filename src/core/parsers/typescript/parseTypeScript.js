@@ -125,6 +125,10 @@ function parseTypeScript(filePaths) {
           case ts.SyntaxKind.ModuleDeclaration: // declare module "..." or namespace X {}
             parseModuleContents(node, checker, result, isDeclared, parsers);
             break;
+          case ts.SyntaxKind.ExpressionStatement:
+            // Обрабатываем assignment expressions для добавления свойств к функциям
+            parseExpressionStatement(node, result, checker);
+            break;
           // Другие типы узлов AST, если необходимо
         }
         ts.forEachChild(node, visit);
@@ -134,6 +138,49 @@ function parseTypeScript(filePaths) {
   });
 
   return result;
+}
+
+/**
+ * Парсит expression statement для обработки assignment expressions
+ * @param {ts.ExpressionStatement} node - нода expression statement
+ * @param {Object} context - контекст для сохранения результатов
+ * @param {ts.TypeChecker} checker - type checker
+ */
+function parseExpressionStatement(node, context, checker) {
+  if (node.expression && ts.isBinaryExpression(node.expression)) {
+    const expr = node.expression;
+
+    // Проверяем, что это assignment (=)
+    if (expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      const left = expr.left;
+      const right = expr.right;
+
+      // Проверяем, что левая часть это property access (someFunc.defaultName)
+      if (ts.isPropertyAccessExpression(left)) {
+        const objectName = left.expression.getText();
+        const propertyName = left.name.text;
+
+        // Проверяем, есть ли объект в functions
+        if (context.functions[objectName]) {
+          let rightValue = right.getText();
+          const rightType = checker.typeToString(
+            checker.getTypeAtLocation(right)
+          );
+
+          // Убираем лишние кавычки для строковых литералов
+          if (ts.isStringLiteral(right)) {
+            rightValue = right.text; // используем text вместо getText() для строк
+          }
+
+          // Добавляем свойство к функции
+          context.functions[objectName][propertyName] = {
+            value: rightValue,
+            types: [rightType],
+          };
+        }
+      }
+    }
+  }
 }
 
 module.exports = {

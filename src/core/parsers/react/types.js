@@ -21,6 +21,11 @@ function getTSType(typeNode) {
   if (t.isTSUnknownKeyword(typeNode)) return "unknown";
   if (t.isTSObjectKeyword(typeNode)) return "object";
 
+  // Обработка типа в скобках (например, ((song: string) => void))
+  if (t.isTSParenthesizedType(typeNode)) {
+    return getTSType(typeNode.typeAnnotation);
+  }
+
   // Ссылочные типы
   if (t.isTSTypeReference(typeNode)) {
     if (t.isIdentifier(typeNode.typeName)) {
@@ -59,7 +64,6 @@ function getTSType(typeNode) {
     return typeNode.types.map((type) => getTSType(type)).join(" | ");
   }
 
-  // Пересечения типов (Intersection)
   if (t.isTSIntersectionType(typeNode)) {
     return typeNode.types.map((type) => getTSType(type)).join(" & ");
   }
@@ -72,7 +76,8 @@ function getTSType(typeNode) {
         const paramType = param.typeAnnotation
           ? getTSType(param.typeAnnotation.typeAnnotation)
           : "any";
-        return `${paramName}: ${paramType}`;
+        const optionalMark = param.optional ? "?" : "";
+        return `${paramName}${optionalMark}: ${paramType}`;
       })
       .join(", ");
 

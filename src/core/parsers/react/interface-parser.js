@@ -140,6 +140,9 @@ function parseSimpleInterfaceDeclaration(
     methods: methods,
     isExported: modifiers.isExported,
     isDeclared: modifiers.isDeclared,
+    // Поля для согласованности с TypeScript парсером
+    extends: extendsInterfaces.length > 0 ? extendsInterfaces : undefined,
+    extendedBy: extendsInterfaces.length > 0 ? extendsInterfaces : undefined,
     // Поля для обратной совместимости
     types: Object.values(properties)
       .map((p) => p.type)

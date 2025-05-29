@@ -42,6 +42,89 @@ describe("Cross-Parser Edge Cases", () => {
         );
       },
     },
+    {
+      name: "Hybrid Types (Function + Properties)",
+      tsContent: `
+        type Logger = {
+          level: string;
+          format: (message: string) => string;
+          clear: () => void;
+        } & ((message: string) => void);
+        
+        export type EventBus = {
+          subscribers: Map<string, Function[]>;
+          subscribe: (event: string, callback: Function) => void;
+          unsubscribe: (event: string, callback: Function) => void;
+        } & ((event: string, data?: any) => void);
+      `,
+      reactContent: `
+        type Logger = {
+          level: string;
+          format: (message: string) => string;
+          clear: () => void;
+        } & ((message: string) => void);
+        
+        export type EventBus = {
+          subscribers: Map<string, Function[]>;
+          subscribe: (event: string, callback: Function) => void;
+          unsubscribe: (event: string, callback: Function) => void;
+        } & ((event: string, data?: any) => void);
+      `,
+      check: (tsResult, reactResult) => {
+        // Проверяем Logger
+        expect(tsResult.types.Logger).toBeDefined();
+        expect(reactResult.types.Logger).toBeDefined();
+        expect(tsResult.types.Logger.type).toBe("function");
+        expect(reactResult.types.Logger.type).toBe("function");
+
+        // Проверяем функциональную сигнатуру Logger
+        expect(tsResult.types.Logger.params).toBeDefined();
+        expect(tsResult.types.Logger.params).toHaveLength(1);
+        expect(tsResult.types.Logger.params[0].name).toBe("message");
+        expect(tsResult.types.Logger.params[0].type).toBe("string");
+        expect(tsResult.types.Logger.returnType).toBe("void");
+
+        expect(reactResult.types.Logger.params).toBeDefined();
+        expect(reactResult.types.Logger.params).toHaveLength(1);
+        expect(reactResult.types.Logger.params[0].name).toBe("message");
+
+        // Проверяем свойства Logger
+        expect(tsResult.types.Logger.properties).toBeDefined();
+        expect(tsResult.types.Logger.properties.level).toBe("string");
+        expect(tsResult.types.Logger.properties.format).toContain("string");
+        expect(tsResult.types.Logger.properties.clear).toContain("void");
+
+        expect(reactResult.types.Logger.properties).toBeDefined();
+        expect(reactResult.types.Logger.properties.level).toBeDefined();
+        expect(reactResult.types.Logger.properties.format).toBeDefined();
+        expect(reactResult.types.Logger.properties.clear).toBeDefined();
+
+        // Проверяем EventBus
+        expect(tsResult.types.EventBus).toBeDefined();
+        expect(reactResult.types.EventBus).toBeDefined();
+        expect(tsResult.types.EventBus.type).toBe("function");
+        expect(reactResult.types.EventBus.type).toBe("function");
+        expect(tsResult.types.EventBus.isExported).toBe(true);
+        expect(reactResult.exports.EventBus).toBe(true);
+
+        // Проверяем функциональную сигнатуру EventBus
+        expect(tsResult.types.EventBus.params).toBeDefined();
+        expect(tsResult.types.EventBus.params.length).toBeGreaterThanOrEqual(1);
+        expect(tsResult.types.EventBus.params[0].name).toBe("event");
+        expect(tsResult.types.EventBus.params[0].type).toBe("string");
+
+        // Проверяем свойства EventBus
+        expect(tsResult.types.EventBus.properties).toBeDefined();
+        expect(tsResult.types.EventBus.properties.subscribers).toBeDefined();
+        expect(tsResult.types.EventBus.properties.subscribe).toBeDefined();
+        expect(tsResult.types.EventBus.properties.unsubscribe).toBeDefined();
+
+        expect(reactResult.types.EventBus.properties).toBeDefined();
+        expect(reactResult.types.EventBus.properties.subscribers).toBeDefined();
+        expect(reactResult.types.EventBus.properties.subscribe).toBeDefined();
+        expect(reactResult.types.EventBus.properties.unsubscribe).toBeDefined();
+      },
+    },
 
     // === СЛОЖНЫЕ ИНТЕРФЕЙСЫ ===
     {

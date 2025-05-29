@@ -345,6 +345,68 @@ describe("Cross-Parser Consistency Checks", () => {
         );
       },
     },
+    {
+      name: "Hybrid Type (Function + Properties)",
+      tsContent: `export type Playlist = {
+        title: string;
+        getPlaylist: () => string[];
+        clearPlaylist: () => void;
+        setPlaylist: (newSongs: string[]) => void;
+      } & ((song: string) => void);`,
+      reactContent: `export type Playlist = {
+        title: string;
+        getPlaylist: () => string[];
+        clearPlaylist: () => void;
+        setPlaylist: (newSongs: string[]) => void;
+      } & ((song: string) => void);`,
+      check: (tsResult, reactResult) => {
+        // Проверяем что оба парсера распознают тип
+        expect(tsResult.types.Playlist).toBeDefined();
+        expect(reactResult.types.Playlist).toBeDefined();
+
+        // Проверяем что это функциональный тип
+        expect(tsResult.types.Playlist.type).toBe("function");
+        expect(reactResult.types.Playlist.type).toBe("function");
+
+        // Проверяем функциональную сигнатуру
+        expect(tsResult.types.Playlist.params).toBeDefined();
+        expect(tsResult.types.Playlist.params).toHaveLength(1);
+        expect(tsResult.types.Playlist.params[0].name).toBe("song");
+        expect(tsResult.types.Playlist.params[0].type).toBe("string");
+        expect(tsResult.types.Playlist.returnType).toBe("void");
+
+        // React парсер должен иметь аналогичную структуру
+        expect(reactResult.types.Playlist.params).toBeDefined();
+        expect(reactResult.types.Playlist.params).toHaveLength(1);
+        expect(reactResult.types.Playlist.params[0].name).toBe("song");
+        expect(reactResult.types.Playlist.returnType).toBe("void");
+
+        // Проверяем свойства
+        expect(tsResult.types.Playlist.properties).toBeDefined();
+        expect(tsResult.types.Playlist.properties.title).toBe("string");
+        expect(tsResult.types.Playlist.properties.getPlaylist).toContain(
+          "string[]"
+        );
+        expect(tsResult.types.Playlist.properties.clearPlaylist).toContain(
+          "void"
+        );
+        expect(tsResult.types.Playlist.properties.setPlaylist).toContain(
+          "string[]"
+        );
+
+        expect(reactResult.types.Playlist.properties).toBeDefined();
+        expect(reactResult.types.Playlist.properties.title).toBeDefined();
+        expect(reactResult.types.Playlist.properties.getPlaylist).toBeDefined();
+        expect(
+          reactResult.types.Playlist.properties.clearPlaylist
+        ).toBeDefined();
+        expect(reactResult.types.Playlist.properties.setPlaylist).toBeDefined();
+
+        // Проверяем экспорт
+        expect(tsResult.types.Playlist.isExported).toBe(true);
+        expect(reactResult.exports.Playlist).toBe(true);
+      },
+    },
 
     // === ENUMS ===
     {
@@ -514,9 +576,14 @@ describe("Cross-Parser Consistency Checks", () => {
         expect(tsClass.properties.name.accessModifier).toBe("protected");
         expect(tsClass.properties.model.accessModifier).toBe("public");
 
-        // React парсер может обрабатывать классы по-разному
-        // Минимальная проверка, что React парсер не упал
-        expect(reactResult).toBeDefined();
+        // React парсер должен иметь аналогичную структуру для классов
+        if (reactResult.classes?.Computer) {
+          const reactClass = reactResult.classes.Computer;
+          expect(reactClass.properties).toBeDefined();
+          // React парсер имеет другую структуру для методов
+          // Старый формат может отсутствовать в React парсере
+          expect(reactClass.isExported).toBe(false);
+        }
       },
     },
     {
@@ -1363,6 +1430,450 @@ describe("Cross-Parser Consistency Checks", () => {
         // React парсер должен обрабатывать классы аналогично
         expect(reactResult.classes?.Island).toBeDefined();
         expect(reactResult.classes?.ResourceIsland).toBeDefined();
+      },
+    },
+    // === ПРОВЕРКА ПОКРЫТИЯ ДОКУМЕНТАЦИИ ===
+    {
+      name: "Documentation Coverage - Function Fields (new and deprecated)",
+      tsContent: `
+        function testFunction(param1: string, param2?: number): boolean {
+          return true;
+        }
+        
+        export async function* asyncGenFunction(): AsyncGenerator<string> {
+          yield "test";
+        }
+      `,
+      reactContent: `
+        function testFunction(param1: string, param2?: number): boolean {
+          return true;
+        }
+        
+        export async function* asyncGenFunction(): AsyncGenerator<string> {
+          yield "test";
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        const tsFunc = tsResult.functions.testFunction;
+        expect(tsFunc).toBeDefined();
+
+        // Новый формат parameters
+        expect(tsFunc.parameters).toBeDefined();
+        expect(Array.isArray(tsFunc.parameters)).toBe(true);
+        expect(tsFunc.parameters[0].name).toBe("param1");
+        expect(tsFunc.parameters[0].type).toBe("string");
+        expect(tsFunc.parameters[0].optional).toBe(false);
+
+        // Устаревший формат params (deprecated)
+        expect(tsFunc.params).toBeDefined();
+        expect(Array.isArray(tsFunc.params)).toBe(true);
+        expect(Array.isArray(tsFunc.params[0].type)).toBe(true);
+        expect(tsFunc.returnResult).toBeDefined();
+        expect(Array.isArray(tsFunc.returnResult)).toBe(true);
+
+        // Общие поля
+        expect(tsFunc.name).toBe("testFunction");
+        expect(tsFunc.returnType).toBe("boolean");
+        expect(tsFunc.isAsync).toBe(false);
+        expect(tsFunc.isGenerator).toBe(false);
+        expect(tsFunc.isExported).toBe(false);
+        expect(tsFunc.isDeclared).toBe(false);
+
+        const tsAsyncFunc = tsResult.functions.asyncGenFunction;
+        expect(tsAsyncFunc.isAsync).toBe(true);
+        expect(tsAsyncFunc.isGenerator).toBe(true);
+        expect(tsAsyncFunc.isExported).toBe(true);
+
+        // React парсер должен иметь аналогичную структуру
+        if (reactResult.functions.testFunction) {
+          const reactFunc = reactResult.functions.testFunction;
+          expect(reactFunc.parameters).toBeDefined();
+          expect(reactFunc.params).toBeDefined(); // deprecated
+          expect(reactFunc.returnResult).toBeDefined(); // deprecated
+        }
+      },
+    },
+    {
+      name: "Documentation Coverage - Variable Fields (new and deprecated)",
+      tsContent: `
+        const constantVar: string = "test";
+        let mutableVar: number;
+        export declare var declaredVar: boolean;
+      `,
+      reactContent: `
+        const constantVar: string = "test";
+        let mutableVar: number;
+        export declare var declaredVar: boolean;
+      `,
+      check: (tsResult, reactResult) => {
+        const tsConstVar = tsResult.variables.constantVar;
+        expect(tsConstVar).toBeDefined();
+        expect(tsConstVar.name).toBe("constantVar");
+        expect(tsConstVar.type).toBe("string");
+        expect(tsConstVar.isConst).toBe(true);
+        expect(tsConstVar.declarationType).toBe("const");
+        expect(tsConstVar.hasInitializer).toBe(true);
+        expect(tsConstVar.isExported).toBe(false);
+        expect(tsConstVar.isDeclared).toBe(false);
+
+        // Устаревшие поля (deprecated)
+        expect(tsConstVar.types).toBeDefined();
+        expect(Array.isArray(tsConstVar.types)).toBe(true);
+        expect(tsConstVar.value).toBeDefined();
+
+        const tsDeclaredVar = tsResult.variables.declaredVar;
+        expect(tsDeclaredVar.isDeclared).toBe(true);
+        expect(tsDeclaredVar.isExported).toBe(true);
+
+        // React парсер должен иметь аналогичную структуру
+        const reactConstVar = reactResult.variables.constantVar;
+        if (reactConstVar) {
+          expect(reactConstVar.types).toBeDefined(); // deprecated
+          expect(reactConstVar.value).toBeDefined(); // deprecated
+        }
+      },
+    },
+    {
+      name: "Documentation Coverage - Class Fields (new and deprecated)",
+      tsContent: `
+        export abstract class TestClass {
+          private readonly id: number = 1;
+          protected name: string;
+          public model: string;
+          static count: number = 0;
+          
+          constructor(name: string) {
+            this.name = name;
+          }
+          
+          public async testMethod(param: string): Promise<void> {
+            // method body
+          }
+        }
+      `,
+      reactContent: `
+        export abstract class TestClass {
+          private readonly id: number = 1;
+          protected name: string;
+          public model: string;
+          static count: number = 0;
+          
+          constructor(name: string) {
+            this.name = name;
+          }
+          
+          public async testMethod(param: string): Promise<void> {
+            // method body
+          }
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        const tsClass = tsResult.classes.TestClass;
+        expect(tsClass).toBeDefined();
+
+        // Основные мета-поля класса
+        expect(tsClass.isExported).toBe(true);
+        expect(tsClass.isAbstract).toBe(true);
+
+        // Новый формат properties
+        expect(tsClass.properties).toBeDefined();
+        expect(tsClass.properties.id).toBeDefined();
+        expect(tsClass.properties.id.accessModifier).toBe("private");
+        expect(tsClass.properties.id.isReadonly).toBe(true);
+        expect(tsClass.properties.id.type).toBe("number");
+
+        // Новый формат methods
+        expect(tsClass.methods).toBeDefined();
+        expect(tsClass.methods.testMethod).toBeDefined();
+        expect(tsClass.methods.testMethod.parameters).toBeDefined();
+        expect(tsClass.methods.testMethod.params).toBeDefined(); // deprecated
+        expect(tsClass.methods.testMethod.returnResult).toBeDefined(); // deprecated
+
+        // Устаревший формат полей класса (deprecated)
+        expect(tsClass.name).toBeDefined();
+        expect(tsClass.name.modificator).toBeDefined();
+        expect(tsClass.name.types).toBeDefined();
+        expect(Array.isArray(tsClass.name.types)).toBe(true);
+        expect(tsClass.name.value).toBeDefined();
+
+        // Проверяем старые поля id и model
+        expect(tsClass.id.modificator).toBe("readonly");
+        expect(tsClass.model.modificator).toBe("opened");
+
+        // React парсер должен иметь аналогичную структуру для классов
+        if (reactResult.classes?.TestClass) {
+          const reactClass = reactResult.classes.TestClass;
+          expect(reactClass.properties).toBeDefined();
+          expect(reactClass.methods).toBeDefined();
+          // React парсер имеет другую структуру полей - нет старого формата modificator
+          expect(reactClass.isExported).toBe(true);
+        }
+      },
+    },
+    {
+      name: "Documentation Coverage - Interface Fields",
+      tsContent: `
+        export interface TestInterface {
+          readonly id: number;
+          name: string;
+          optional?: boolean;
+          
+          testMethod(param: string): Promise<void>;
+        }
+      `,
+      reactContent: `
+        export interface TestInterface {
+          readonly id: number;
+          name: string;
+          optional?: boolean;
+          
+          testMethod(param: string): Promise<void>;
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        const tsInterface = tsResult.interfaces.TestInterface;
+        expect(tsInterface).toBeDefined();
+        expect(tsInterface.name).toBe("TestInterface");
+        expect(tsInterface.isExported).toBe(true);
+
+        expect(tsInterface.properties).toBeDefined();
+        expect(tsInterface.properties.id).toBe("number");
+
+        expect(tsInterface.methods).toBeDefined();
+        expect(tsInterface.methods.testMethod).toBeDefined();
+        expect(tsInterface.methods.testMethod.parameters).toBeDefined();
+        expect(tsInterface.methods.testMethod.params).toBeDefined(); // deprecated
+
+        // React парсер должен иметь аналогичную структуру
+        const reactInterface = reactResult.interfaces.TestInterface;
+        if (reactInterface) {
+          expect(reactInterface.properties).toBeDefined();
+          expect(reactInterface.methods).toBeDefined();
+        }
+      },
+    },
+    {
+      name: "Documentation Coverage - Enum Fields",
+      tsContent: `
+        export const enum TestEnum {
+          First = "first",
+          Second = 2,
+          Third
+        }
+      `,
+      reactContent: `
+        export const enum TestEnum {
+          First = "first",
+          Second = 2,
+          Third
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        const tsEnum = tsResult.enums.TestEnum;
+        expect(tsEnum).toBeDefined();
+        expect(tsEnum.name).toBe("TestEnum");
+        expect(tsEnum.isConst).toBe(true);
+        expect(tsEnum.isExported).toBe(true);
+        expect(tsEnum.members).toBeDefined();
+        expect(Array.isArray(tsEnum.members)).toBe(true);
+        expect(tsEnum.members.length).toBe(3);
+        expect(tsEnum.members[0].name).toBe("First");
+        expect(tsEnum.members[0].value).toBe('"first"');
+
+        // React парсер должен иметь аналогичную структуру
+        const reactEnum = reactResult.enums?.TestEnum;
+        if (reactEnum) {
+          expect(reactEnum.members).toBeDefined();
+          expect(Array.isArray(reactEnum.members)).toBe(true);
+        }
+      },
+    },
+    {
+      name: "Documentation Coverage - React-specific Fields",
+      tsContent: `
+        export const TestComponent = ({name}) => {
+          return null;
+        };
+        
+        export function FunctionComponent(props) {
+          return null;
+        }
+      `,
+      reactContent: `
+        export const TestComponent = ({name}) => {
+          return null;
+        };
+        
+        export function FunctionComponent(props) {
+          return null;
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        // Проверяем что React парсер добавляет поле hooks
+        expect(reactResult.hooks).toBeDefined();
+        expect(typeof reactResult.hooks).toBe("object");
+
+        // Const функции попадают в variables, function декларации в functions
+        const testComponent =
+          reactResult.variables.TestComponent ||
+          reactResult.functions.TestComponent;
+        const funcComponent = reactResult.functions.FunctionComponent;
+
+        // jsx поле может быть добавлено только если детектор определяет это как React компонент
+        // Для простых функций без JSX может отсутствовать
+        if (testComponent) {
+          expect(testComponent).toBeDefined();
+        }
+        if (funcComponent) {
+          expect(funcComponent).toBeDefined();
+        }
+      },
+    },
+    {
+      name: "Arrow Function (const)",
+      tsContent:
+        "export const arrowFunc = (x: number, y: number): number => x + y;",
+      reactContent:
+        "export const arrowFunc = (x: number, y: number): number => x + y;",
+      check: (tsResult, reactResult) => {
+        // Функция должна быть в variables
+        expect(tsResult.variables.arrowFunc).toBeDefined();
+        expect(tsResult.variables.arrowFunc.isExported).toBe(true);
+        expect(tsResult.variables.arrowFunc.declarationType).toBe("const");
+
+        // И также дублироваться в functions
+        expect(tsResult.functions.arrowFunc).toBeDefined();
+        expect(tsResult.functions.arrowFunc.isExported).toBe(true);
+        expect(tsResult.functions.arrowFunc.parameters).toBeDefined();
+        expect(tsResult.functions.arrowFunc.parameters.length).toBe(2);
+        expect(tsResult.functions.arrowFunc.parameters[0].name).toBe("x");
+        expect(tsResult.functions.arrowFunc.parameters[0].type).toBe("number");
+        expect(tsResult.functions.arrowFunc.parameters[1].name).toBe("y");
+        expect(tsResult.functions.arrowFunc.parameters[1].type).toBe("number");
+        expect(tsResult.functions.arrowFunc.returnType).toBe("number");
+
+        // React парсер может обработать по-разному
+        expect(tsResult.functions.arrowFunc.isExported).toBe(
+          reactResult.exports.arrowFunc === true
+        );
+      },
+    },
+    {
+      name: "Function Expression (const)",
+      tsContent:
+        "export const funcExpr = function(message: string): void { console.log(message); };",
+      reactContent:
+        "export const funcExpr = function(message: string): void { console.log(message); };",
+      check: (tsResult, reactResult) => {
+        // Функция должна быть в variables
+        expect(tsResult.variables.funcExpr).toBeDefined();
+        expect(tsResult.variables.funcExpr.isExported).toBe(true);
+        expect(tsResult.variables.funcExpr.declarationType).toBe("const");
+
+        // И также дублироваться в functions
+        expect(tsResult.functions.funcExpr).toBeDefined();
+        expect(tsResult.functions.funcExpr.isExported).toBe(true);
+        expect(tsResult.functions.funcExpr.parameters).toBeDefined();
+        expect(tsResult.functions.funcExpr.parameters.length).toBe(1);
+        expect(tsResult.functions.funcExpr.parameters[0].name).toBe("message");
+        expect(tsResult.functions.funcExpr.parameters[0].type).toBe("string");
+        expect(tsResult.functions.funcExpr.returnType).toBe("void");
+
+        expect(tsResult.functions.funcExpr.isExported).toBe(
+          reactResult.exports.funcExpr === true
+        );
+      },
+    },
+    {
+      name: "Typed Function Variable",
+      tsContent: `
+        type Greeting = (name?: string) => string;
+        export const greetFunc: Greeting = (name = "World") => \`Hello, \${name}!\`;
+      `,
+      reactContent: `
+        type Greeting = (name?: string) => string;
+        export const greetFunc: Greeting = (name = "World") => \`Hello, \${name}!\`;
+      `,
+      check: (tsResult, reactResult) => {
+        // Проверяем тип Greeting
+        expect(tsResult.types.Greeting).toBeDefined();
+        expect(tsResult.types.Greeting.type).toBe("function");
+
+        // Функция должна быть в variables
+        expect(tsResult.variables.greetFunc).toBeDefined();
+        expect(tsResult.variables.greetFunc.type).toBe("Greeting");
+        expect(tsResult.variables.greetFunc.isExported).toBe(true);
+
+        // И также дублироваться в functions с правильным типом
+        expect(tsResult.functions.greetFunc).toBeDefined();
+        expect(tsResult.functions.greetFunc.isExported).toBe(true);
+        expect(tsResult.functions.greetFunc.types[0]).toBe("Greeting");
+        expect(tsResult.functions.greetFunc.parameters).toBeDefined();
+        expect(tsResult.functions.greetFunc.parameters.length).toBe(1);
+        expect(tsResult.functions.greetFunc.parameters[0].name).toBe("name");
+        expect(tsResult.functions.greetFunc.parameters[0].type).toBe("any");
+        expect(tsResult.functions.greetFunc.parameters[0].optional).toBe(false);
+
+        expect(tsResult.functions.greetFunc.isExported).toBe(
+          reactResult.exports.greetFunc === true
+        );
+      },
+    },
+    {
+      name: "Function with Properties (Hybrid)",
+      tsContent: `
+        type Greeting = {
+          defaultName: string;
+          setDefaultName: (newName: string) => void;
+        } & ((name?: string) => string);
+        
+        export const someFunc: Greeting = (name) => \`Hello, \${name || someFunc.defaultName}\`;
+        someFunc.defaultName = "Func";
+        someFunc.setDefaultName = (anotherName) => {};
+      `,
+      reactContent: `
+        type Greeting = {
+          defaultName: string;
+          setDefaultName: (newName: string) => void;
+        } & ((name?: string) => string);
+        
+        export const someFunc: Greeting = (name) => \`Hello, \${name || someFunc.defaultName}\`;
+        someFunc.defaultName = "Func";
+        someFunc.setDefaultName = (anotherName) => {};
+      `,
+      check: (tsResult, reactResult) => {
+        // Проверяем гибридный тип Greeting
+        expect(tsResult.types.Greeting).toBeDefined();
+        expect(tsResult.types.Greeting.type).toBe("function");
+        expect(tsResult.types.Greeting.properties).toBeDefined();
+        expect(tsResult.types.Greeting.properties.defaultName).toBe("string");
+        expect(tsResult.types.Greeting.properties.setDefaultName).toContain(
+          "(newName: string) => void"
+        );
+
+        // Функция должна быть в variables
+        expect(tsResult.variables.someFunc).toBeDefined();
+        expect(tsResult.variables.someFunc.type).toBe("Greeting");
+        expect(tsResult.variables.someFunc.isExported).toBe(true);
+
+        // И также дублироваться в functions с properties
+        expect(tsResult.functions.someFunc).toBeDefined();
+        expect(tsResult.functions.someFunc.isExported).toBe(true);
+        expect(tsResult.functions.someFunc.types[0]).toBe("Greeting");
+
+        // Проверяем что свойства добавлены к функции через assignment expressions
+        expect(tsResult.functions.someFunc.defaultName).toBeDefined();
+        expect(tsResult.functions.someFunc.defaultName.value).toBe("Func");
+        expect(tsResult.functions.someFunc.defaultName.types[0]).toBe('"Func"');
+
+        expect(tsResult.functions.someFunc.setDefaultName).toBeDefined();
+        expect(tsResult.functions.someFunc.setDefaultName.types[0]).toContain(
+          "(anotherName: string) => void"
+        );
+
+        expect(tsResult.functions.someFunc.isExported).toBe(
+          reactResult.exports.someFunc === true
+        );
       },
     },
   ];
