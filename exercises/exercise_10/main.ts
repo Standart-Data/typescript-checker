@@ -8,9 +8,9 @@
 class Car {
   make: string;
   model: string;
-  year: any;
+  year: number;
 
-  constructor(make: string, model: string, year: any) {
+  constructor(make: string, model: string, year: number) {
     this.make = make;
     this.model = model;
     this.year = year;

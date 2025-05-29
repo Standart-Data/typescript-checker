@@ -1,7 +1,9 @@
-const { readTsFiles } = require("../../parse");
+const { parseTypeScript } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
-const allVariables = readTsFiles(["./main.ts"]);
+const allVariables = parseTypeScript([path.join(__dirname, "main.ts")]);
+console.log(JSON.stringify(allVariables, null, 2));
 
 describe("Class Parsing Tests", function () {
   it("Класс Plane имеет корректные свойства и модификаторы доступа", function () {

@@ -1,254 +1,250 @@
 <!DOCTYPE html>
 <html>
-<head>
+  <head>
     <title>Loading ...</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
-    <link rel="stylesheet" href="/libs/cm/codemirror_665.min.css">
-    <link rel="stylesheet" href="/libs/cm/material-darker.min.css">
+    <link rel="stylesheet" href="/libs/cm/codemirror_665.min.css" />
+    <link rel="stylesheet" href="/libs/cm/material-darker.min.css" />
 
     <script src="/libs/cm/codemirror_665.min.js"></script>
-    <script src="/libs/cm_javascript.js"></script>
-    <script src="/libs/handlebars.min.js" ></script>
+    <script src="/libs/cm/cm_javascript.js" type="module"></script>
+    <script src="/libs/cm/cm_css.js" type="module"></script>
+    <script src="/libs/handlebars.min.js"></script>
 
     <script src="/libs/chai.js"></script>
     <script src="/libs/mocha.js"></script>
 
-    <script src="/libs/tailwind_browser.js" ></script>
+    <script src="/libs/tailwind_browser.js"></script>
     <script src="/libs/crypto-js.min.js"></script>
     <script src="/resizable_columns.js"></script>
 
-    <link rel="stylesheet" href="/app.css">
-</head>
-<body class="bg-[#A8B2CA] ">
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body class="bg-[#A8B2CA]">
+    <div class="h-full resizable-container">
+      <!--  Левая колонка  -->
 
-<div class="h-full resizable-container">
+      <div class="column-left card rounded-xl overflow-hidden shadow-lg">
+        <section class="bg-grey" id="theExercise">
+          <!-- Здесь загрузится упражнение -->
+        </section>
+      </div>
 
-    <!--  Левая колонка  -->
+      <div class="resizer resizer-left"></div>
 
-    <div class="column-left  card rounded-xl overflow-hidden shadow-lg">
-        <section class="bg-grey" id="theExercise">  <!-- Здесь загрузится упражнение --></section>
-    </div>
+      <!-- Центральная колонка -->
 
-    <div class="resizer resizer-left"> </div>
+      <div
+        class="column-middle card-dark rounded-xl overflow-hidden font-bold relative shadow-lg"
+      >
+        <section id="theEditor"><!-- Здесь загрузится редактор --></section>
+      </div>
 
-    <!-- Центральная колонка -->
+      <div class="resizer resizer-right"></div>
 
-    <div class="column-middle card-dark rounded-xl overflow-hidden font-bold relative shadow-lg">
-        <section id="theEditor"> <!-- Здесь загрузится редактор --> </section>
-    </div>
+      <!-- Правая колонка   -->
 
-    <div class="resizer resizer-right"> </div>
-
-    <!-- Правая колонка   -->
-
-    <div class="column-right h-screen grid grid-rows-[auto_1fr]">
-
-        <div class=" card  rounded-xl overflow-hidden relative  shadow-lg">
-            <div id="theTestResults" ><!-- Здесь загрузятся результаты тестов --> </div>
+      <div class="column-right h-screen grid grid-rows-[auto_1fr]">
+        <div class="card rounded-xl overflow-hidden relative shadow-lg">
+          <div id="theTestResults">
+            <!-- Здесь загрузятся результаты тестов -->
+          </div>
         </div>
 
-        <div class="mt-4 card rounded-xl overflow-hidden   shadow-lg">
-            <section id="theOutput" class="">  <!-- Здесь загрузятся вывод --> </section>
-            <section id="theConsole" class="p-5 "> <!-- Здесь загрузятся консоль --> </section>
+        <div class="mt-4 card rounded-xl overflow-hidden shadow-lg">
+          <section id="theOutput" class="">
+            <!-- Здесь загрузятся вывод -->
+          </section>
+          <section id="theConsole" class="p-5">
+            <!-- Здесь загрузятся консоль -->
+          </section>
         </div>
-
-    </div>
-</div>
-
-
-<template id="exercise">
-
-    <section class="tabs flex  bg-[#e6e8ed] font-bold">
-
-        <div class="tab-active w-fit px-5 py-4 inline-flex items-center bg-[#F4F5F8]">
-            <i class="icon icon-exercise"></i>
-            <span>Задание</span>
-        </div>
-
-        <div class="level px-5 py-4 ">
-            Cложность:
-            <span class="mr-1">✽</span>
-            {{#if (eq exercise.level "1")}}
-            <span class="mr-1 opacity-50">✽</span>
-            <span class="mr-1 opacity-50">✽</span>
-            {{else if (eq exercise.level "2")}}
-            <span class="mr-1">✽</span>
-            <span class="mr-1 opacity-50">✽</span>
-            {{else if (eq exercise.level "3")}}
-            <span class="mr-1">✽</span>
-            <span class="mr-1">✽</span>
-            {{/if}}
-
-        </div>
-
-    </section>
-
-    <section class="p-5 h-full overflow-scroll">
-
-    <h2 class="text-2xl font-bold">
-        {{exercise.title}}
-    </h2>
-
-    <!-- Текст упражнения -->
-
-    <div class="text mt-3">
-        {{{ exercise.text }}}
+      </div>
     </div>
 
-    <details class="prompt">
-        <summary class="flex cursor-pointer list-none items-center  text-[#3CC39E] pr-4 py-2 my-4 rounded-lg fit-content">
+    <template id="exercise">
+      <section class="tabs flex bg-[#e6e8ed] font-bold">
+        <div
+          class="tab-active w-fit px-5 py-4 inline-flex items-center bg-[#F4F5F8]"
+        >
+          <i class="icon icon-exercise"></i>
+          <span>Задание</span>
+        </div>
+
+        <div class="level px-5 py-4">
+          Cложность:
+          <span class="mr-1">✽</span>
+          {{#if (eq exercise.level "1")}}
+          <span class="mr-1 opacity-50">✽</span>
+          <span class="mr-1 opacity-50">✽</span>
+          {{else if (eq exercise.level "2")}}
+          <span class="mr-1">✽</span>
+          <span class="mr-1 opacity-50">✽</span>
+          {{else if (eq exercise.level "3")}}
+          <span class="mr-1">✽</span>
+          <span class="mr-1">✽</span>
+          {{/if}}
+        </div>
+      </section>
+
+      <section class="p-5 h-full overflow-scroll">
+        <h2 class="text-2xl font-bold">{{exercise.title}}</h2>
+
+        <!-- Текст упражнения -->
+
+        <div class="text mt-3">{{{ exercise.text }}}</div>
+
+        <details class="prompt">
+          <summary
+            class="flex cursor-pointer list-none items-center text-[#3CC39E] pr-4 py-2 my-4 rounded-lg fit-content"
+          >
             <span class="mr-2 inline-flex items-center font-bold">
-                <i class="icon icon-message"></i>
-                Подсказка
+              <i class="icon icon-message"></i>
+              Подсказка
             </span>
 
             <svg
-                    class="hint__chevron w-5 h-5 transition duration-300 group-open:-rotate-180"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+              class="hint__chevron w-5 h-5 transition duration-300 group-open:-rotate-180"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-                <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 9l-7 7-7-7"
-                />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
+          </summary>
 
-        </summary>
-
-        <div class="prompt__content bg-[#ffffff] rounded-lg p-5">
+          <div class="prompt__content bg-[#ffffff] rounded-lg p-5">
             {{{ exercise.prompt }}}
-        </div>
+          </div>
+        </details>
+      </section>
+    </template>
 
-    </details>
-
-    </section>
-
-</template>
-
-<template id="output">
-
-    <section class="tabs bg-[#e6e8ed] ">
+    <template id="output">
+      <section class="tabs bg-[#e6e8ed]">
         <div class="active-tab w-fit px-5 py-4 bg-[#F4F5F8] font-bold">
-            {{#if errors}}Ошибки при выполнении {{else}} Результат выполнения {{/if}}
+          {{#if errors}}Ошибки при выполнении {{else}} Результат выполнения
+          {{/if}}
         </div>
-    </section>
+      </section>
 
-    <section class="p-5 h-full overflow-y-scroll">
-
-    {{#if errors}}
-
-        {{#each errors}}
+      <section class="p-5 h-full overflow-y-scroll">
+        {{#if errors}} {{#each errors}}
         <p>🚨{{this.message}}</p>
-        {{/each}}
-    {{else}}
+        {{/each}} {{else}}
         <pre>{{code}}</pre>
-    {{/if}}
-    </section>
+        {{/if}}
+      </section>
 
-    <iframe id="output__iframe" srcdoc="{{srcdoc}}"> </iframe>
+      <iframe id="output__iframe" srcdoc="{{srcdoc}}"> </iframe>
+    </template>
 
-</template>
+    <template id="editor">
+      <div id="editor-tabs" class="flex flex-wrap overflow-x-auto text-white">
+        {{#each fields}}
+        <div
+          class="editor-tab px-4 py-4 mr-2 rounded-t-lg cursor-pointer {{#if @first}}active-tab{{/if}}"
+          data-index="{{@index}}"
+        >
+          {{file_name}}
+        </div>
+        {{/each}}
+      </div>
 
-<template id="editor">
-
-    <div class="editor__header px-5 py-4 grid  bg-[#15141F] text-[#ffffff]">
-        <p class=""> {{ fields.0.file_name}}</p>
-    </div>
-
-    <div class="editor__body mt-4 relative">
-        <textarea id="editor__ide">{{fields.0.value}}</textarea>
-        <button id="resetbutton" onclick="app.reset()" class="absolute right-4 bottom-8 bg-[#3CC39E] text-white px-2 py-2 my-2 rounded-lg cursor-pointer" >
-            <img src="/assets/icon-reset.svg" alt="" >
+      <div class="editor__body relative">
+        {{#each fields}}
+        <div
+          class="editor-content {{#unless @first}}hidden{{/unless}}"
+          data-index="{{@index}}"
+        >
+          <textarea id="editor__ide-{{@index}}">{{value}}</textarea>
+        </div>
+        {{/each}}
+        <button
+          id="resetbutton"
+          onclick="app.reset()"
+          class="absolute right-4 bottom-8 bg-[#3CC39E] text-white px-2 py-2 my-2 rounded-lg cursor-pointer"
+        >
+          <img src="/assets/icon-reset.svg" alt="" />
         </button>
-    </div>
+      </div>
+    </template>
 
-</template>
-
-<template  id="testResults">
-
-    <section class="tabs flex flex-wrap items-center bg-[#EFEFEF] text-[#201e2e]] font-bold">
-
+    <template id="testResults">
+      <section
+        class="tabs flex flex-wrap items-center bg-[#EFEFEF] text-[#201e2e]] font-bold"
+      >
         <div class="">
-            <div class="tab-active  bg-[#F4F5F8] px-5 py-4">
-                <span>Выполнено {{countTrue tests "passed"}} из {{tests.length}}</span>
-            </div>
+          <div class="tab-active bg-[#F4F5F8] px-5 py-4">
+            <span
+              >Выполнено {{countTrue tests "passed"}} из {{tests.length}}</span
+            >
+          </div>
         </div>
 
-        <div class=" pl-4">
-            <button id="checkbutton" onclick="app.check()" class="w-full bg-[#3CC39E] text-white px-4 py-2 my-2 rounded-lg cursor-pointer" >
-                Запустить и проверить
-            </button>
+        <div class="pl-4">
+          <button
+            id="checkbutton"
+            onclick="app.check()"
+            class="w-full bg-[#3CC39E] text-white px-4 py-2 my-2 rounded-lg cursor-pointer"
+          >
+            Запустить и проверить
+          </button>
         </div>
+      </section>
 
-    </section>
+      {{#if completed}}
 
-    {{#if completed}}
-
-    <div class="rounded-xl bg-[#3CC39E] mx-4 mt-4 p-4 ">
+      <div class="rounded-xl bg-[#3CC39E] mx-4 mt-4 p-4">
         Задача выполнена! Код
-        <span class="inline-block rounded bg-teal-600 px-1 text-white"> {{task.confirmationCode}} </span>
-    </div>
+        <span class="inline-block rounded bg-teal-600 px-1 text-white">
+          {{task.confirmationCode}}
+        </span>
+      </div>
 
-    {{/if}}
+      {{/if}}
 
-        <section class="h-full overflow-scroll">
+      <section class="h-full overflow-scroll">
         <ul class="p-5">
+          {{#each feedback}}
 
-            {{#each feedback}}
+          <p class="text-slate-500 mb-2">{{this.suite}}</p>
 
-                <p class="text-slate-500 mb-2">{{this.suite}}</p>
-
-                {{#each this.tests}}
-
-                {{feedback.0.title}}
-
-                {{#if this.passed}}
-                <div class="passed mb-2 ">
-                    <li class="passed mb-3 text-[#3ba68c] font-bold" > {{this.title}} </li>
-                </div>
-                {{else}}
-                <div class="failed mb-2">
-                    <li class="mb-3">{{this.title}}</li>
-                </div>
-                {{/if}}
-
-                {{/each}}
-
-            {{/each}}
-
+          {{#each this.tests}} {{feedback.0.title}} {{#if this.passed}}
+          <div class="passed mb-2">
+            <li class="passed mb-3 text-[#3ba68c] font-bold">{{this.title}}</li>
+          </div>
+          {{else}}
+          <div class="failed mb-2">
+            <li class="mb-3">{{this.title}}</li>
+          </div>
+          {{/if}} {{/each}} {{/each}}
         </ul>
-        </section>
+      </section>
+    </template>
 
+    <script src="/test_runner.js" defer></script>
+    <script src="/component.class.js" defer></script>
+    <script src="/task.class.js" defer></script>
+    <script src="/app.js" defer></script>
 
-</template>
+    <script>
+      const urlObj = new URL(window.location.href);
+      const taskID = urlObj.pathname.split("/").filter(Boolean).pop();
 
-<script src="/test_runner.js" defer></script>
-<script src="/component.class.js" defer></script>
-<script src="/task.class.js" defer></script>
-<script src="/app.js" defer></script>
-
-<script>
-
-    const urlObj = new URL(window.location.href);
-    const taskID = urlObj.pathname.split('/').filter(Boolean).pop()
-
-
-    document.addEventListener('DOMContentLoaded', function(){
-
+      document.addEventListener("DOMContentLoaded", function () {
         const app = new App(taskID);
-        app.testRunner = new TestRunner()
-        document.app = app
-        app.start()
-
-    })
-
-
-</script>
-
-</body>
+        app.testRunner = new TestRunner();
+        document.app = app;
+        app.start();
+      });
+    </script>
+  </body>
 </html>

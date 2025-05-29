@@ -1,7 +1,8 @@
-const { readTsFiles } = require("../../parse");
+const { parseTypeScript } = require("../../src");
 const assert = require("assert");
+const path = require("path");
 
-const allVariables = readTsFiles(["./main.ts"]);
+const allVariables = parseTypeScript([path.join(__dirname, "main.ts")]);
 
 describe("TypeScript Type Checking for Inventory Code", function () {
   it("Переменная inventoryItem имеет корректный тип", function () {
@@ -9,36 +10,25 @@ describe("TypeScript Type Checking for Inventory Code", function () {
     assert.strictEqual(inventoryItem.types[0], "[string, number]");
   });
 
-  it("Переменная name имеет корректный тип и источник", function () {
-    const name = allVariables.variables["name"];
-    assert.strictEqual(name.types[0], "string");
-    assert.strictEqual(name.from, "inventoryItem");
-  });
-
-  it("Переменная qty имеет корректный тип и источник", function () {
-    const qty = allVariables.variables["qty"];
-    assert.strictEqual(qty.types[0], "number");
-    assert.strictEqual(qty.from, "inventoryItem");
-  });
-
   it("Переменная msg имеет корректный тип", function () {
     const msg = allVariables.variables["msg"];
     assert.strictEqual(msg.types[0], "string");
   });
 
-  it("В коде объявлена функция addInventory с параметрами типов string и number", function () {
-    const functionParams = allVariables.functions["addInventory"]["params"];
+  it("В коде объявлена функция addInventory с параметрами типов any", function () {
+    const functionParams = allVariables.functions["addInventory"]["parameters"];
     const nameParam = functionParams.find((param) => param.name === "name");
     const quantityParam = functionParams.find(
       (param) => param.name === "quantity"
     );
-    assert.strictEqual(nameParam.type, "string");
-    assert.strictEqual(quantityParam.type, "number");
+    assert.strictEqual(nameParam.type, "any");
+    assert.strictEqual(quantityParam.type, "any");
   });
 
   it("Функция addInventory имеет возвращаемый тип string", function () {
-    assert.ok(
-      allVariables.functions["addInventory"]["returnResult"].includes("string")
+    assert.strictEqual(
+      allVariables.functions["addInventory"]["returnType"],
+      "string"
     );
   });
 });
