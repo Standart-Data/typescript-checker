@@ -366,6 +366,7 @@ class App {
 
   reset() {
     try {
+      // Удаляем сохраненные данные из localStorage
       const keys = Object.keys(localStorage);
       keys.forEach((key) => {
         if (key.startsWith(this.taskID)) {
@@ -373,7 +374,12 @@ class App {
         }
       });
 
+      // Очищаем существующие редакторы
+      app.editors = {};
+
       const apiFiles = this.task.fields || [];
+
+      // Обновляем компонент editor с исходными данными
       this.components.editor.update({ fields: apiFiles });
       console.log("Файлы сброшены до оригинальных из API:", apiFiles);
 
@@ -381,13 +387,19 @@ class App {
         this.activeFileName = apiFiles[0].file_name;
       }
 
-      this.highlightEditor();
-
+      // Даем время DOM обновиться, затем инициализируем редакторы
       setTimeout(() => {
-        const firstTab = document.querySelector('.editor-tab[data-index="0"]');
-        if (firstTab) {
-          firstTab.click();
-        }
+        this.highlightEditor();
+
+        // Активируем первую вкладку
+        setTimeout(() => {
+          const firstTab = document.querySelector(
+            '.editor-tab[data-index="0"]'
+          );
+          if (firstTab) {
+            firstTab.click();
+          }
+        }, 100);
       }, 100);
 
       console.log("Запомненный код удален из localStorage.");

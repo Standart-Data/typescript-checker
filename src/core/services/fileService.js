@@ -1,4 +1,5 @@
 const { createProcessor } = require("../../processors");
+const { processMultipleFiles } = require("./multiFileService");
 
 /**
  * Определяет расширение файла с учетом .d.ts
@@ -22,7 +23,16 @@ function getOutputFileName(filename, extension) {
   if (extension === "d.ts") {
     return filename;
   }
-  return filename.replace(extension === "tsx" ? ".tsx" : ".ts", ".js");
+
+  switch (extension) {
+    case "tsx":
+    case "jsx":
+      return filename.replace(/\.(tsx|jsx)$/, ".js");
+    case "ts":
+      return filename.replace(/\.ts$/, ".js");
+    default:
+      return filename;
+  }
 }
 
 /**
@@ -34,8 +44,10 @@ function getOutputFileName(filename, extension) {
 function processFile(filename, content) {
   const extension = getFileExtension(filename);
 
-  // Поддерживаем только TypeScript файлы
-  if (!["ts", "tsx", "d.ts"].includes(extension)) {
+  // Поддерживаем TypeScript, JSX, TSX и CSS файлы
+  if (
+    !["ts", "tsx", "jsx", "d.ts", "css", "scss", "sass"].includes(extension)
+  ) {
     return {
       success: false,
       errors: [{ message: `Неподдерживаемый тип файла: ${extension}` }],
@@ -45,6 +57,16 @@ function processFile(filename, content) {
   }
 
   try {
+    // Для CSS файлов не нужна компиляция, только парсинг
+    if (["css", "scss", "sass"].includes(extension)) {
+      return {
+        success: true,
+        errors: [],
+        compiledCode: content, // CSS возвращаем как есть
+        outputFileName: filename, // CSS файлы не изменяют имя
+      };
+    }
+
     const processor = createProcessor(extension, content);
     const errors = processor.validate();
 
@@ -79,29 +101,37 @@ function processFile(filename, content) {
 }
 
 /**
- * Обрабатывает множество файлов
+ * Обрабатывает множество файлов с правильным разрешением зависимостей
  * @param {Object} files - объект с файлами {filename: content}
  * @returns {Object} результат обработки всех файлов
  */
 function processFiles(files) {
-  const results = {
-    compiledFiles: {},
-    allErrors: [],
-    processedFiles: {},
-  };
+  const fileCount = Object.keys(files).length;
 
-  for (const [filename, content] of Object.entries(files)) {
-    const result = processFile(filename, content);
+  // Если только один файл, используем старый метод для обратной совместимости
+  if (fileCount === 1) {
+    const results = {
+      compiledFiles: {},
+      allErrors: [],
+      processedFiles: {},
+    };
 
-    results.processedFiles[filename] = result;
-    results.allErrors.push(...result.errors);
+    for (const [filename, content] of Object.entries(files)) {
+      const result = processFile(filename, content);
 
-    if (result.success && result.compiledCode) {
-      results.compiledFiles[result.outputFileName] = result.compiledCode;
+      results.processedFiles[filename] = result;
+      results.allErrors.push(...result.errors);
+
+      if (result.success && result.compiledCode) {
+        results.compiledFiles[result.outputFileName] = result.compiledCode;
+      }
     }
+
+    return results;
   }
 
-  return results;
+  // Для множественных файлов используем новый сервис
+  return processMultipleFiles(files);
 }
 
 module.exports = {

@@ -127,7 +127,7 @@ function parseReact(filePaths) {
 
           // Проверяем на хуки
           if (isHookCall(declaratorPath)) {
-            processHook(declaratorPath, result);
+            processHook(declaratorPath, normalizedCode, result);
           }
         });
       },
@@ -150,7 +150,7 @@ function parseReact(filePaths) {
 
         // Проверяем на хуки
         if (isHookCall(path)) {
-          processHook(path, result);
+          processHook(path, normalizedCode, result);
         }
       },
 
@@ -206,7 +206,7 @@ function parseReact(filePaths) {
       // Вызовы функций для обнаружения хуков
       CallExpression(path) {
         if (isHookCall(path)) {
-          processHook(path, result);
+          processHook(path, normalizedCode, result);
         }
       },
     });

@@ -3,6 +3,7 @@ const {
   parseFiles,
   parseTypeScript,
   parseReact,
+  parseCSS,
 } = require("./parsers");
 
 const {
@@ -13,6 +14,10 @@ const {
   getMainFileName,
   extractFileMetadata,
   extractMetadata,
+  processProjectWithCSSModules,
+  validateCSSModuleIntegration,
+  createCSSModuleBundle,
+  checkCSSModuleCompliance,
 } = require("./services");
 
 module.exports = {
@@ -20,6 +25,7 @@ module.exports = {
   parseFiles,
   parseTypeScript,
   parseReact,
+  parseCSS,
   getFileExtension,
   getOutputFileName,
   processFile,
@@ -27,4 +33,8 @@ module.exports = {
   getMainFileName,
   extractFileMetadata,
   extractMetadata,
+  processProjectWithCSSModules,
+  validateCSSModuleIntegration,
+  createCSSModuleBundle,
+  checkCSSModuleCompliance,
 };

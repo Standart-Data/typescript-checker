@@ -34,8 +34,19 @@ function getFileType(filename) {
   if (filename.endsWith(".d.ts")) {
     return "d.ts";
   }
+
+  if (filename.includes(".module.css")) {
+    return "css";
+  }
+  if (filename.includes(".module.scss")) {
+    return "scss";
+  }
+  if (filename.includes(".module.sass")) {
+    return "sass";
+  }
+
   const ext = path.extname(filename).toLowerCase();
-  return ext ? ext.substring(1) : ""; // Удаляем точку из расширения
+  return ext ? ext.substring(1) : "";
 }
 
 module.exports = {

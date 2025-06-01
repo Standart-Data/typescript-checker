@@ -1,6 +1,7 @@
 const { getParser } = require("../parsers");
 const { createTempFileWithContent } = require("../../utils");
 const { getFileExtension } = require("./fileService");
+const { createUnifiedContext } = require("./dependencyService");
 
 /**
  * Определяет главный файл из списка файлов
@@ -16,7 +17,19 @@ function getMainFileName(files) {
     return mainTs;
   }
 
-  // Если нет main.ts, берем первый файл
+  // Затем main.tsx
+  const mainTsx = fileNames.find((name) => name === "main.tsx");
+  if (mainTsx) {
+    return mainTsx;
+  }
+
+  // Затем main.jsx
+  const mainJsx = fileNames.find((name) => name === "main.jsx");
+  if (mainJsx) {
+    return mainJsx;
+  }
+
+  // Если нет main файлов, берем первый файл
   return fileNames[0];
 }
 
@@ -62,40 +75,81 @@ function extractFileMetadata(filename, content) {
 }
 
 /**
- * Извлекает метаданные из множества файлов
+ * Извлекает метаданные из множества файлов с учетом зависимостей
  * @param {Object} files - объект с файлами {filename: content}
- * @returns {Object} структурированные метаданные
+ * @returns {Object} структурированные метаданные с разрешенными зависимостями
  */
 function extractMetadata(files) {
   const mainFileName = getMainFileName(files);
-  const metadata = {
-    files: {},
-    // Здесь будут поля из главного файла
-  };
+  const filesMetadata = {};
 
-  // Обрабатываем каждый файл
+  // Сначала извлекаем метаданные из каждого файла отдельно
   for (const [filename, content] of Object.entries(files)) {
     const result = extractFileMetadata(filename, content);
 
     if (result.success) {
-      metadata.files[filename] = result.metadata;
-
-      // Если это главный файл, копируем его метаданные в корень
-      if (filename === mainFileName) {
-        Object.keys(result.metadata).forEach((key) => {
-          if (key !== "files") {
-            metadata[key] = result.metadata[key];
-          }
-        });
-      }
+      filesMetadata[filename] = result.metadata;
     } else {
-      metadata.files[filename] = {
+      filesMetadata[filename] = {
         error: result.message,
+        functions: {},
+        variables: {},
+        classes: {},
+        interfaces: {},
+        types: {},
+        enums: {},
+        imports: {},
+        exports: {},
       };
     }
   }
 
+  // Создаем унифицированный контекст с разрешенными зависимостями
+  const unifiedContext = createUnifiedContext(files, filesMetadata);
+
+  // Формируем финальный результат
+  const metadata = {
+    files: filesMetadata,
+    // Информация о зависимостях
+    dependencies: unifiedContext.dependencies,
+    globalDeclarations: unifiedContext.globalDeclarations,
+    // Метаданные главного файла копируем в корень для обратной совместимости
+    ...getMainFileMetadata(filesMetadata[mainFileName] || {}),
+  };
+
   return metadata;
+}
+
+/**
+ * Извлекает метаданные главного файла для корня ответа
+ * @param {Object} mainFileMetadata - метаданные главного файла
+ * @returns {Object} метаданные для корня
+ */
+function getMainFileMetadata(mainFileMetadata) {
+  const rootMetadata = {};
+
+  // Копируем основные категории из главного файла
+  const categories = [
+    "functions",
+    "variables",
+    "classes",
+    "interfaces",
+    "types",
+    "enums",
+    "imports",
+    "exports",
+    "declarations",
+    "modules",
+    "namespaces",
+    "components",
+    "hooks",
+  ];
+
+  categories.forEach((category) => {
+    rootMetadata[category] = mainFileMetadata[category] || {};
+  });
+
+  return rootMetadata;
 }
 
 module.exports = {

@@ -1,9 +1,10 @@
 const { parseTypeScript } = require("./typescript");
 const { parseReact } = require("./react");
+const { parseCSS } = require("./css");
 
 /**
  * Возвращает функцию парсера для указанного типа файла.
- * @param {string} fileExtension - Расширение файла (ts, tsx, js, jsx, d.ts).
+ * @param {string} fileExtension - Расширение файла (ts, tsx, js, jsx, d.ts, css, scss, sass).
  * @returns {Function|null} - Функция парсера или null, если парсер не найден.
  */
 function getParser(fileExtension) {
@@ -15,6 +16,10 @@ function getParser(fileExtension) {
     case "tsx":
     case "jsx":
       return parseReact;
+    case "css":
+    case "scss":
+    case "sass":
+      return parseCSS;
     default:
       return null;
   }
@@ -41,4 +46,5 @@ module.exports = {
   parseFiles,
   parseTypeScript,
   parseReact,
+  parseCSS,
 };
