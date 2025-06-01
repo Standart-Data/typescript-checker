@@ -112,6 +112,32 @@ function typeNodeToString(typeNode) {
     case "TSObjectKeyword":
       return "object";
 
+    case "TSTypeQuery":
+      // Обработка typeof операторов
+      if (typeNode.exprName && typeNode.exprName.name) {
+        return `typeof${typeNode.exprName.name}`;
+      }
+      return "unknown";
+
+    case "TSTypeOperator":
+      // Обработка keyof и других операторов типов
+      if (typeNode.operator && typeNode.typeAnnotation) {
+        const innerType = typeNodeToString(typeNode.typeAnnotation);
+        return `${typeNode.operator}${innerType}`;
+      }
+      return "unknown";
+
+    case "TSIndexedAccessType":
+      // Для indexed access типов (typeof Statuses[keyof typeof Statuses]) обрабатываем аналогично TypeScript парсеру
+      if (typeNode.objectType && typeNode.indexType) {
+        const objectPart = typeNodeToString(typeNode.objectType);
+        const indexPart = typeNodeToString(typeNode.indexType);
+        return `${objectPart}[${indexPart}]`
+          .replace(/\s+/g, "")
+          .replace(/[()]/g, "");
+      }
+      return "unknown";
+
     default:
       return getTSType({ typeAnnotation: typeNode });
   }
@@ -383,10 +409,25 @@ function parseSimpleTypeAliasDeclaration(
       typeInfo.possibleTypes = possibleTypes;
       typeDefinition = typeNodeToString(node.typeAnnotation);
       typeInfo.value = typeDefinition;
+    } else if (node.typeAnnotation.type === "TSMappedType") {
+      // Mapped типы - сохраняем полное текстовое представление
+      typeDefinition = typeNodeToString(node.typeAnnotation);
+      typeInfo.type = "mapped";
+      typeInfo.value = typeDefinition;
+    } else if (node.typeAnnotation.type === "TSConditionalType") {
+      // Условные типы - сохраняем полное текстовое представление
+      typeDefinition = typeNodeToString(node.typeAnnotation);
+      typeInfo.type = "conditional";
+      typeInfo.value = typeDefinition;
     } else if (node.typeAnnotation.type === "TSTypeReference") {
       // Utility типы (Pick, Omit, etc.) и обычные ссылки на типы
       typeDefinition = typeNodeToString(node.typeAnnotation);
       typeInfo.type = typeDefinition;
+      typeInfo.value = typeDefinition;
+    } else if (node.typeAnnotation.type === "TSIndexedAccessType") {
+      // Для indexed access типов (typeof Statuses[keyof typeof Statuses]) сохраняем исходное представление
+      typeDefinition = typeNodeToString(node.typeAnnotation);
+      typeInfo.type = "simple";
       typeInfo.value = typeDefinition;
     } else {
       // Другие типы

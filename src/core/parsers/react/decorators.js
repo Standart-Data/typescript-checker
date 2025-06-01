@@ -1,6 +1,102 @@
 const t = require("@babel/types");
 
 /**
+ * Получает текстовое представление узла AST
+ * @param {Object} node - узел AST
+ * @returns {string} текстовое представление
+ */
+function getNodeText(node) {
+  if (!node) return "";
+
+  if (t.isStringLiteral(node)) {
+    return `"${node.value}"`;
+  }
+
+  if (t.isNumericLiteral(node)) {
+    return node.value.toString();
+  }
+
+  if (t.isBooleanLiteral(node)) {
+    return node.value.toString();
+  }
+
+  if (t.isNullLiteral(node)) {
+    return "null";
+  }
+
+  if (t.isIdentifier(node)) {
+    return node.name;
+  }
+
+  if (t.isMemberExpression(node)) {
+    return `${getNodeText(node.object)}.${getNodeText(node.property)}`;
+  }
+
+  if (t.isArrayExpression(node)) {
+    const elements = node.elements.map((elem) => getNodeText(elem)).join(", ");
+    return `[${elements}]`;
+  }
+
+  if (t.isObjectExpression(node)) {
+    const properties = node.properties
+      .map((prop) => {
+        if (t.isObjectProperty(prop)) {
+          const key = t.isIdentifier(prop.key)
+            ? prop.key.name
+            : getNodeText(prop.key);
+          const value = getNodeText(prop.value);
+          return `${key}: ${value}`;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join(", ");
+    return `{ ${properties} }`;
+  }
+
+  if (t.isTemplateLiteral(node)) {
+    let result = "`";
+    for (let i = 0; i < node.quasis.length; i++) {
+      result += node.quasis[i].value.raw;
+      if (i < node.expressions.length) {
+        result += "${" + getNodeText(node.expressions[i]) + "}";
+      }
+    }
+    result += "`";
+    return result;
+  }
+
+  if (t.isArrowFunctionExpression(node) || t.isFunctionExpression(node)) {
+    const params = node.params.map((param) => getNodeText(param)).join(", ");
+    const body = t.isBlockStatement(node.body)
+      ? "{ ... }"
+      : getNodeText(node.body);
+    return `(${params}) => ${body}`;
+  }
+
+  if (t.isBinaryExpression(node)) {
+    return `${getNodeText(node.left)} ${node.operator} ${getNodeText(
+      node.right
+    )}`;
+  }
+
+  if (t.isConditionalExpression(node)) {
+    return `${getNodeText(node.test)} ? ${getNodeText(
+      node.consequent
+    )} : ${getNodeText(node.alternate)}`;
+  }
+
+  if (t.isCallExpression(node)) {
+    const callee = getNodeText(node.callee);
+    const args = node.arguments.map((arg) => getNodeText(arg)).join(", ");
+    return `${callee}(${args})`;
+  }
+
+  // Для всех остальных случаев пытаемся использовать toString или возвращаем пустую строку
+  return node.toString?.() || "";
+}
+
+/**
  * Обрабатывает декораторы в React компонентах
  * @param {Object} path - путь к узлу AST
  * @returns {Array} массив с информацией о декораторах
@@ -17,45 +113,14 @@ function parseDecorators(path) {
 
       if (t.isCallExpression(decorator.expression)) {
         // Для декораторов с аргументами - @Component({...})
-        decoratorInfo.name =
-          decorator.expression.callee.name ||
-          decorator.expression.callee.getText();
+        decoratorInfo.name = getNodeText(decorator.expression.callee);
+
         decorator.expression.arguments.forEach((arg) => {
-          if (t.isObjectExpression(arg)) {
-            const argObj = {};
-            arg.properties.forEach((prop) => {
-              if (t.isObjectProperty(prop)) {
-                const key = prop.key.name;
-                let value;
-
-                if (t.isStringLiteral(prop.value)) {
-                  value = prop.value.value;
-                } else if (t.isNumericLiteral(prop.value)) {
-                  value = prop.value.value;
-                } else {
-                  value = prop.value.getText
-                    ? prop.value.getText()
-                    : prop.value.toString();
-                }
-
-                argObj[key] = value;
-              }
-            });
-            decoratorInfo.args.push(argObj);
-          } else if (t.isStringLiteral(arg)) {
-            decoratorInfo.args.push(arg.value);
-          } else if (t.isNumericLiteral(arg)) {
-            decoratorInfo.args.push(arg.value);
-          } else {
-            decoratorInfo.args.push(
-              arg.getText ? arg.getText() : arg.toString()
-            );
-          }
+          decoratorInfo.args.push(getNodeText(arg));
         });
       } else {
-        // Для простых декораторов без аргументов - @Input
-        decoratorInfo.name =
-          decorator.expression.name || decorator.expression.getText();
+        // Для простых декораторов без аргументов - @Observable
+        decoratorInfo.name = getNodeText(decorator.expression);
       }
 
       decorators.push(decoratorInfo);
@@ -85,31 +150,20 @@ function parseParamDecorators(path) {
           };
 
           if (t.isCallExpression(decorator.expression)) {
-            decoratorInfo.name =
-              decorator.expression.callee.name ||
-              decorator.expression.callee.getText();
+            decoratorInfo.name = getNodeText(decorator.expression.callee);
             decorator.expression.arguments.forEach((arg) => {
-              if (t.isStringLiteral(arg)) {
-                decoratorInfo.args.push(arg.value);
-              } else if (t.isNumericLiteral(arg)) {
-                decoratorInfo.args.push(arg.value);
-              } else {
-                decoratorInfo.args.push(
-                  arg.getText ? arg.getText() : arg.toString()
-                );
-              }
+              decoratorInfo.args.push(getNodeText(arg));
             });
           } else {
-            decoratorInfo.name =
-              decorator.expression.name || decorator.expression.getText();
+            decoratorInfo.name = getNodeText(decorator.expression);
           }
 
           decorators.push(decoratorInfo);
         });
 
         paramDecorators.push({
-          index,
-          name: param.name ? param.name.name : "param",
+          parameterIndex: index,
+          name: param.name ? param.name.name : `param${index}`,
           decorators,
         });
       }
@@ -119,7 +173,41 @@ function parseParamDecorators(path) {
   return paramDecorators;
 }
 
+/**
+ * Обрабатывает декораторы методов, включая геттеры и сеттеры
+ * @param {Object} path - путь к узлу AST метода
+ * @returns {Array} массив с информацией о декораторах
+ */
+function parseMethodDecorators(path) {
+  // Используем общую функцию parseDecorators для методов
+  return parseDecorators(path);
+}
+
+/**
+ * Обрабатывает декораторы свойств класса
+ * @param {Object} path - путь к узлу AST свойства
+ * @returns {Array} массив с информацией о декораторах
+ */
+function parsePropertyDecorators(path) {
+  // Используем общую функцию parseDecorators для свойств
+  return parseDecorators(path);
+}
+
+/**
+ * Обрабатывает декораторы аксессоров (геттеров и сеттеров)
+ * @param {Object} path - путь к узлу AST аксессора
+ * @returns {Array} массив с информацией о декораторах
+ */
+function parseAccessorDecorators(path) {
+  // Используем общую функцию parseDecorators для аксессоров
+  return parseDecorators(path);
+}
+
 module.exports = {
   parseDecorators,
   parseParamDecorators,
+  parseMethodDecorators,
+  parsePropertyDecorators,
+  parseAccessorDecorators,
+  getNodeText,
 };

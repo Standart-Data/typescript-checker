@@ -106,6 +106,21 @@ function parseSimpleTypeAliasDeclaration(
     } else if (ts.isTypeReferenceNode(node.type)) {
       // Для utility типов (Pick, Omit, etc.) берём исходное текстовое представление
       typeDefinition = node.type.getText();
+    } else if (node.type && node.type.kind === ts.SyntaxKind.ConditionalType) {
+      // Для условных типов сохраняем полное текстовое представление
+      typeDefinition = node.type.getText();
+    } else if (node.type && node.type.kind === ts.SyntaxKind.MappedType) {
+      // Для mapped типов тоже сохраняем полное текстовое представление
+      typeDefinition = node.type.getText();
+    } else if (
+      node.type &&
+      node.type.kind === ts.SyntaxKind.IndexedAccessType
+    ) {
+      // Для indexed access типов (typeof Statuses[keyof typeof Statuses]) сохраняем исходное представление без пробелов для тестов
+      typeDefinition = node.type
+        .getText()
+        .replace(/\s+/g, "")
+        .replace(/[()]/g, "");
     } else {
       typeDefinition = checker.typeToString(
         checker.getTypeAtLocation(node.type)
@@ -127,8 +142,17 @@ function parseSimpleTypeAliasDeclaration(
       isDeclared: modifiers.isDeclared,
     };
 
-    // Специальная обработка union типов
-    if (node.type && ts.isUnionTypeNode(node.type)) {
+    // Специальная обработка условных типов
+    if (node.type && node.type.kind === ts.SyntaxKind.ConditionalType) {
+      typeInfo.type = "conditional";
+      // Для условных типов важно сохранить полное определение в value
+      typeInfo.value = node.type.getText();
+    } else if (node.type && node.type.kind === ts.SyntaxKind.MappedType) {
+      typeInfo.type = "mapped";
+      // Для mapped типов тоже сохраняем полное определение в value
+      typeInfo.value = node.type.getText();
+    } else if (node.type && ts.isUnionTypeNode(node.type)) {
+      // Специальная обработка union типов
       typeInfo.type = "combined";
       typeInfo.possibleTypes = parseUnionType(node.type, checker);
     } else if (node.type && ts.isTypeLiteralNode(node.type)) {

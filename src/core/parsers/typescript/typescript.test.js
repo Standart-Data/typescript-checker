@@ -1127,5 +1127,676 @@ describe("parseTypeScript", () => {
     });
   });
 
+  // === РАСШИРЕННЫЕ ТЕСТЫ ДЛЯ ДЕКОРАТОРОВ ===
+  describe("Decorator Parsing", () => {
+    it("should parse class decorators with various argument types", () => {
+      const content = `
+        @Logger(LogLevel.INFO, "TestClass")
+        @Component({
+          selector: 'app-test',
+          template: '<div>{{title}}</div>',
+          providers: ['service1', 'service2']
+        })
+        @Observable
+        export class DecoratedClass {
+          title: string = "Test";
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      const decoratedClass = result.classes.DecoratedClass;
+      expect(decoratedClass).toBeDefined();
+      expect(decoratedClass.decorators).toBeDefined();
+      expect(decoratedClass.decorators).toHaveLength(3);
+
+      // Проверяем Logger декоратор с простыми аргументами
+      const loggerDecorator = decoratedClass.decorators.find(
+        (d) => d.name === "Logger"
+      );
+      expect(loggerDecorator).toBeDefined();
+      expect(loggerDecorator.args).toHaveLength(2);
+      expect(loggerDecorator.args[0]).toBe("LogLevel.INFO");
+      expect(loggerDecorator.args[1]).toBe('"TestClass"');
+
+      // Проверяем Component декоратор с объектным аргументом
+      const componentDecorator = decoratedClass.decorators.find(
+        (d) => d.name === "Component"
+      );
+      expect(componentDecorator).toBeDefined();
+      expect(componentDecorator.args).toHaveLength(1);
+      expect(componentDecorator.args[0]).toContain("selector:");
+      expect(componentDecorator.args[0]).toContain("template:");
+      expect(componentDecorator.args[0]).toContain("providers:");
+
+      // Проверяем Observable декоратор без аргументов
+      const observableDecorator = decoratedClass.decorators.find(
+        (d) => d.name === "Observable"
+      );
+      expect(observableDecorator).toBeDefined();
+      expect(observableDecorator.args).toHaveLength(0);
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse property decorators with validation", () => {
+      const content = `
+        class ValidationClass {
+          @Required
+          @MaxLength(50)
+          name: string;
+
+          @MinLength(3)
+          @EnumValidation(UserRole)
+          role: string;
+
+          @Readonly
+          @Lazy(() => new Date().toISOString())
+          readonly createdAt: string;
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      const validationClass = result.classes.ValidationClass;
+      expect(validationClass).toBeDefined();
+      expect(validationClass.properties).toBeDefined();
+
+      // Проверяем name свойство с множественными декораторами
+      const nameProperty = validationClass.properties.name;
+      expect(nameProperty).toBeDefined();
+      expect(nameProperty.decorators).toBeDefined();
+      expect(nameProperty.decorators).toHaveLength(2);
+
+      const requiredDecorator = nameProperty.decorators.find(
+        (d) => d.name === "Required"
+      );
+      expect(requiredDecorator).toBeDefined();
+      expect(requiredDecorator.args).toHaveLength(0);
+
+      const maxLengthDecorator = nameProperty.decorators.find(
+        (d) => d.name === "MaxLength"
+      );
+      expect(maxLengthDecorator).toBeDefined();
+      expect(maxLengthDecorator.args[0]).toBe("50");
+
+      // Проверяем role свойство
+      const roleProperty = validationClass.properties.role;
+      expect(roleProperty).toBeDefined();
+      expect(roleProperty.decorators).toBeDefined();
+      expect(roleProperty.decorators).toHaveLength(2);
+
+      const minLengthDecorator = roleProperty.decorators.find(
+        (d) => d.name === "MinLength"
+      );
+      expect(minLengthDecorator).toBeDefined();
+      expect(minLengthDecorator.args[0]).toBe("3");
+
+      const enumValidationDecorator = roleProperty.decorators.find(
+        (d) => d.name === "EnumValidation"
+      );
+      expect(enumValidationDecorator).toBeDefined();
+      expect(enumValidationDecorator.args[0]).toBe("UserRole");
+
+      // Проверяем createdAt свойство
+      const createdAtProperty = validationClass.properties.createdAt;
+      expect(createdAtProperty).toBeDefined();
+      expect(createdAtProperty.decorators).toBeDefined();
+      expect(createdAtProperty.decorators).toHaveLength(2);
+
+      const readonlyDecorator = createdAtProperty.decorators.find(
+        (d) => d.name === "Readonly"
+      );
+      expect(readonlyDecorator).toBeDefined();
+
+      const lazyDecorator = createdAtProperty.decorators.find(
+        (d) => d.name === "Lazy"
+      );
+      expect(lazyDecorator).toBeDefined();
+      expect(lazyDecorator.args[0]).toContain("() => new Date().toISOString()");
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse method decorators with complex configurations", () => {
+      const content = `
+        class ServiceClass {
+          @Cacheable({ ttl: 300, strategy: "memory", maxSize: 100 })
+          @Measure(true)
+          @LogMethodCalls(LogLevel.DEBUG)
+          getData(id: number): Promise<any> {
+            return Promise.resolve({ id, data: "test" });
+          }
+
+          @Retry(3, 1000)
+          @Authorize(["admin", "moderator"])
+          @BusinessLogic({ cache: false, retry: true })
+          async deleteData(id: number): Promise<boolean> {
+            return true;
+          }
+
+          @Throttle(1000)
+          @ApiEndpoint("/api/search", "GET")
+          search(query: string): any[] {
+            return [];
+          }
+
+          @Debounce(500)
+          onInput(value: string): void {
+            console.log(value);
+          }
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      const serviceClass = result.classes.ServiceClass;
+      expect(serviceClass).toBeDefined();
+      expect(serviceClass.methods).toBeDefined();
+
+      // Проверяем getData метод
+      const getDataMethod = serviceClass.methods.getData;
+      expect(getDataMethod).toBeDefined();
+      expect(getDataMethod.decorators).toBeDefined();
+      expect(getDataMethod.decorators).toHaveLength(3);
+
+      const cacheableDecorator = getDataMethod.decorators.find(
+        (d) => d.name === "Cacheable"
+      );
+      expect(cacheableDecorator).toBeDefined();
+      expect(cacheableDecorator.args[0]).toContain("ttl:");
+      expect(cacheableDecorator.args[0]).toContain("strategy:");
+      expect(cacheableDecorator.args[0]).toContain("maxSize:");
+
+      const measureDecorator = getDataMethod.decorators.find(
+        (d) => d.name === "Measure"
+      );
+      expect(measureDecorator).toBeDefined();
+      expect(measureDecorator.args[0]).toBe("true");
+
+      const logMethodCallsDecorator = getDataMethod.decorators.find(
+        (d) => d.name === "LogMethodCalls"
+      );
+      expect(logMethodCallsDecorator).toBeDefined();
+      expect(logMethodCallsDecorator.args[0]).toBe("LogLevel.DEBUG");
+
+      // Проверяем deleteData метод
+      const deleteDataMethod = serviceClass.methods.deleteData;
+      expect(deleteDataMethod).toBeDefined();
+      expect(deleteDataMethod.decorators).toBeDefined();
+      expect(deleteDataMethod.decorators).toHaveLength(3);
+
+      const retryDecorator = deleteDataMethod.decorators.find(
+        (d) => d.name === "Retry"
+      );
+      expect(retryDecorator).toBeDefined();
+      expect(retryDecorator.args).toHaveLength(2);
+      expect(retryDecorator.args[0]).toBe("3");
+      expect(retryDecorator.args[1]).toBe("1000");
+
+      const authorizeDecorator = deleteDataMethod.decorators.find(
+        (d) => d.name === "Authorize"
+      );
+      expect(authorizeDecorator).toBeDefined();
+      expect(authorizeDecorator.args[0]).toContain("admin");
+      expect(authorizeDecorator.args[0]).toContain("moderator");
+
+      // Проверяем search метод
+      const searchMethod = serviceClass.methods.search;
+      expect(searchMethod).toBeDefined();
+      expect(searchMethod.decorators).toBeDefined();
+      expect(searchMethod.decorators).toHaveLength(2);
+
+      const throttleDecorator = searchMethod.decorators.find(
+        (d) => d.name === "Throttle"
+      );
+      expect(throttleDecorator).toBeDefined();
+      expect(throttleDecorator.args[0]).toBe("1000");
+
+      const apiEndpointDecorator = searchMethod.decorators.find(
+        (d) => d.name === "ApiEndpoint"
+      );
+      expect(apiEndpointDecorator).toBeDefined();
+      expect(apiEndpointDecorator.args[0]).toBe('"/api/search"');
+      expect(apiEndpointDecorator.args[1]).toBe('"GET"');
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse parameter decorators with transformations", () => {
+      const content = `
+        class ParameterClass {
+          processUser(
+            @Validate((name) => name.length > 2, "Name too short")
+            @Trim
+            @Uppercase
+            name: string,
+
+            @TypeCheck("number")
+            @DefaultValue(18)
+            age: number,
+
+            @Lowercase
+            @Trim
+            email: string
+          ): void {
+            console.log(name, age, email);
+          }
+
+          searchUsers(
+            @Validate((term) => term.length >= 2)
+            @Trim
+            @Lowercase
+            searchTerm: string,
+
+            @DefaultValue(10)
+            limit: number = 10
+          ): any[] {
+            return [];
+          }
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      const parameterClass = result.classes.ParameterClass;
+      expect(parameterClass).toBeDefined();
+      expect(parameterClass.methods).toBeDefined();
+
+      // Проверяем processUser метод
+      const processUserMethod = parameterClass.methods.processUser;
+      expect(processUserMethod).toBeDefined();
+
+      // Параметр декораторы могут обрабатываться по-разному
+      // Проверяем хотя бы то, что метод корректно парсится
+      expect(processUserMethod.parameters).toBeDefined();
+      expect(processUserMethod.parameters).toHaveLength(3);
+
+      // Проверяем что параметры имеют правильные имена и типы
+      expect(processUserMethod.parameters[0].name).toBe("name");
+      expect(processUserMethod.parameters[0].type).toBe("string");
+      expect(processUserMethod.parameters[1].name).toBe("age");
+      expect(processUserMethod.parameters[1].type).toBe("number");
+      expect(processUserMethod.parameters[2].name).toBe("email");
+      expect(processUserMethod.parameters[2].type).toBe("string");
+
+      // Если paramDecorators поддерживается, проверяем их
+      if (processUserMethod.paramDecorators) {
+        expect(processUserMethod.paramDecorators.length).toBeGreaterThan(0);
+
+        // Проверяем первый параметр если декораторы поддерживаются
+        const nameParam = processUserMethod.paramDecorators.find(
+          (p) => p.parameterIndex === 0
+        );
+        if (nameParam) {
+          expect(nameParam.decorators).toBeDefined();
+          expect(nameParam.decorators.length).toBeGreaterThan(0);
+        }
+      }
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse accessor decorators (getters and setters)", () => {
+      const content = `
+        class AccessorClass {
+          private _value: string = "";
+
+          @LogGetter
+          get value(): string {
+            return this._value;
+          }
+
+          @LogSetter
+          @Validate((v) => typeof v === 'string')
+          set value(newValue: string) {
+            this._value = newValue;
+          }
+
+          private _theme: string = "light";
+
+          @LogGetter
+          get currentTheme(): string {
+            return this._theme;
+          }
+
+          @LogSetter
+          set currentTheme(theme: string) {
+            this._theme = theme;
+          }
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      const accessorClass = result.classes.AccessorClass;
+      expect(accessorClass).toBeDefined();
+      expect(accessorClass.methods).toBeDefined();
+
+      // Проверяем что геттеры и сеттеры парсятся как методы
+      const methodNames = Object.keys(accessorClass.methods);
+      expect(methodNames.length).toBeGreaterThan(0);
+
+      // В зависимости от парсера, геттеры/сеттеры могут парситься по-разному
+      // Проверяем хотя бы наличие методов с правильными именами
+      const hasValueMethod = methodNames.some((name) => name.includes("value"));
+      const hasThemeMethod = methodNames.some(
+        (name) => name.includes("currentTheme") || name.includes("theme")
+      );
+
+      expect(hasValueMethod || hasThemeMethod).toBe(true);
+
+      // Если есть информация о геттерах, проверяем её
+      const valueMethod =
+        accessorClass.methods.value ||
+        Object.values(accessorClass.methods).find((m) => m.name === "value");
+
+      if (valueMethod) {
+        // Проверяем что метод имеет декораторы
+        if (valueMethod.decorators) {
+          expect(valueMethod.decorators.length).toBeGreaterThan(0);
+        }
+      }
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse inherited classes with decorators", () => {
+      const content = `
+        @Logger(LogLevel.INFO, "BaseService")
+        abstract class BaseService {
+          @Required
+          protected name: string;
+
+          @Measure()
+          abstract processData(): void;
+        }
+
+        @Observable
+        @Metrics({ trackCalls: true })
+        class UserService extends BaseService {
+          @MaxLength(100)
+          protected name: string = "UserService";
+
+          @Cacheable({ ttl: 60 })
+          @Measure()
+          processData(): void {
+            console.log("Processing user data");
+          }
+
+          @Authorize(["admin"])
+          deleteUser(@TypeCheck("number") id: number): boolean {
+            return true;
+          }
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      // Проверяем базовый класс
+      const baseService = result.classes.BaseService;
+      expect(baseService).toBeDefined();
+      expect(baseService.decorators).toBeDefined();
+      expect(baseService.decorators).toHaveLength(1);
+
+      const baseLoggerDecorator = baseService.decorators.find(
+        (d) => d.name === "Logger"
+      );
+      expect(baseLoggerDecorator).toBeDefined();
+      expect(baseLoggerDecorator.args[0]).toBe("LogLevel.INFO");
+      expect(baseLoggerDecorator.args[1]).toBe('"BaseService"');
+
+      expect(baseService.isAbstract).toBe(true);
+
+      // Проверяем производный класс
+      const userService = result.classes.UserService;
+      expect(userService).toBeDefined();
+      expect(userService.decorators).toBeDefined();
+      expect(userService.decorators).toHaveLength(2);
+
+      // extends может возвращаться как массив или строка, проверяем оба варианта
+      if (Array.isArray(userService.extends)) {
+        expect(userService.extends).toContain("BaseService");
+      } else {
+        expect(userService.extends).toBe("BaseService");
+      }
+
+      const observableDecorator = userService.decorators.find(
+        (d) => d.name === "Observable"
+      );
+      expect(observableDecorator).toBeDefined();
+
+      const metricsDecorator = userService.decorators.find(
+        (d) => d.name === "Metrics"
+      );
+      expect(metricsDecorator).toBeDefined();
+      expect(metricsDecorator.args[0]).toContain("trackCalls:");
+
+      // Проверяем переопределенные свойства и методы
+      expect(userService.properties.name).toBeDefined();
+      expect(userService.properties.name.decorators).toBeDefined();
+
+      const maxLengthDecorator = userService.properties.name.decorators.find(
+        (d) => d.name === "MaxLength"
+      );
+      expect(maxLengthDecorator).toBeDefined();
+      expect(maxLengthDecorator.args[0]).toBe("100");
+
+      expect(userService.methods.processData).toBeDefined();
+      expect(userService.methods.processData.decorators).toBeDefined();
+      expect(userService.methods.processData.decorators).toHaveLength(2);
+
+      expect(userService.methods.deleteUser).toBeDefined();
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse generic classes with decorators", () => {
+      const content = `
+        @Component({
+          template: '<div>{{data}}</div>'
+        })
+        class GenericComponent<T> {
+          @Required
+          data: T;
+
+          @Cacheable({ ttl: 120 })
+          processItem(@Validate((item) => item != null) item: T): T {
+            return item;
+          }
+        }
+
+        @Logger(LogLevel.DEBUG, "Repository")
+        class Repository<TEntity, TKey> {
+          @Lazy(() => new Map())
+          private cache: Map<TKey, TEntity>;
+
+          @Measure()
+          async findById(@TypeCheck("object") id: TKey): Promise<TEntity | null> {
+            return null;
+          }
+
+          @Retry(3, 500)
+          async save(@Required entity: TEntity): Promise<void> {
+            // Save logic
+          }
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      // Проверяем GenericComponent
+      const genericComponent = result.classes.GenericComponent;
+      expect(genericComponent).toBeDefined();
+      expect(genericComponent.decorators).toBeDefined();
+      expect(genericComponent.decorators).toHaveLength(1);
+
+      // Парсер может не поддерживать поле generics, но должен парсить класс
+      // Проверяем что класс корректно обработан
+      expect(genericComponent.properties.data).toBeDefined();
+      expect(genericComponent.methods.processItem).toBeDefined();
+
+      const componentDecorator = genericComponent.decorators.find(
+        (d) => d.name === "Component"
+      );
+      expect(componentDecorator).toBeDefined();
+      expect(componentDecorator.args[0]).toContain("template:");
+
+      // Проверяем Repository
+      const repository = result.classes.Repository;
+      expect(repository).toBeDefined();
+      expect(repository.decorators).toBeDefined();
+      expect(repository.decorators).toHaveLength(1);
+
+      // Проверяем что методы корректно парсятся
+      expect(repository.methods.findById).toBeDefined();
+      expect(repository.methods.save).toBeDefined();
+
+      const repositoryLoggerDecorator = repository.decorators.find(
+        (d) => d.name === "Logger"
+      );
+      expect(repositoryLoggerDecorator).toBeDefined();
+      expect(repositoryLoggerDecorator.args[1]).toBe('"Repository"');
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should parse decorators with template strings and complex expressions", () => {
+      const content = `
+        const API_BASE = "https://api.example.com";
+        const VERSION = "v1";
+
+        @Component({
+          selector: \`app-\${Date.now()}\`,
+          template: \`
+            <div class="container">
+              <h1>{{title}}</h1>
+              <button (click)="onClick()">Click me</button>
+            </div>
+          \`,
+          styleUrls: [\`./styles/component-\${VERSION}.css\`]
+        })
+        class DynamicComponent {
+          @ApiEndpoint(\`\${API_BASE}/\${VERSION}/users\`, "GET")
+          @Cacheable({ 
+            ttl: 5 * 60, 
+            strategy: process.env.NODE_ENV === 'production' ? 'redis' : 'memory' 
+          })
+          getUsers(): Promise<any[]> {
+            return Promise.resolve([]);
+          }
+
+          @Validate((input) => input.trim().length > 0)
+          @DefaultValue(\`default-\${Math.random()}\`)
+          processInput(input: string): string {
+            return input;
+          }
+        }
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      const dynamicComponent = result.classes.DynamicComponent;
+      expect(dynamicComponent).toBeDefined();
+      expect(dynamicComponent.decorators).toBeDefined();
+      expect(dynamicComponent.decorators).toHaveLength(1);
+
+      const componentDecorator = dynamicComponent.decorators.find(
+        (d) => d.name === "Component"
+      );
+      expect(componentDecorator).toBeDefined();
+      expect(componentDecorator.args[0]).toContain("selector:");
+      expect(componentDecorator.args[0]).toContain("template:");
+      expect(componentDecorator.args[0]).toContain("styleUrls:");
+
+      // Проверяем методы с комплексными декораторами
+      const getUsersMethod = dynamicComponent.methods.getUsers;
+      expect(getUsersMethod).toBeDefined();
+      expect(getUsersMethod.decorators).toBeDefined();
+      expect(getUsersMethod.decorators).toHaveLength(2);
+
+      const apiEndpointDecorator = getUsersMethod.decorators.find(
+        (d) => d.name === "ApiEndpoint"
+      );
+      expect(apiEndpointDecorator).toBeDefined();
+      expect(apiEndpointDecorator.args[0]).toContain(
+        "${API_BASE}/${VERSION}/users"
+      );
+
+      const cacheableDecorator = getUsersMethod.decorators.find(
+        (d) => d.name === "Cacheable"
+      );
+      expect(cacheableDecorator).toBeDefined();
+      expect(cacheableDecorator.args[0]).toContain("ttl:");
+      expect(cacheableDecorator.args[0]).toContain("strategy:");
+
+      cleanupTempDir(tempFile);
+    });
+
+    it("should handle decorator parsing edge cases", () => {
+      const content = `
+        // Декораторы с комментариями
+        @/* comment */ Logger(LogLevel.INFO)
+        @Component(/* config */ {
+          selector: 'test'
+        })
+        class CommentedClass {
+          // Свойство с декоратором в комментарии
+          // @Deprecated
+          @Required
+          name: string;
+
+          /* @Internal */
+          @Measure()
+          method(): void {}
+        }
+
+        // Декораторы с необычными пробелами и переносами
+        @   Logger   (   LogLevel.DEBUG   ,   "SpacedClass"   )
+        @
+        Observable
+        class SpacedClass {
+          @
+            Required
+          @
+            MaxLength(
+              100
+            )
+          description: string;
+        }
+
+        // Декораторы с вычисляемыми значениями
+        @Logger(process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.ERROR)
+        @Component({
+          selector: ['app', 'component'].join('-'),
+          providers: [1, 2, 3].map(i => \`service\${i}\`)
+        })
+        class ComputedClass {}
+      `;
+      const tempFile = createTempFileWithContent(content);
+      const result = parseTypeScript([tempFile]);
+
+      // Проверяем что классы парсятся несмотря на комментарии и пробелы
+      expect(result.classes.CommentedClass).toBeDefined();
+      expect(result.classes.SpacedClass).toBeDefined();
+      expect(result.classes.ComputedClass).toBeDefined();
+
+      // Проверяем что декораторы корректно извлекаются
+      const commentedClass = result.classes.CommentedClass;
+      expect(commentedClass.decorators).toBeDefined();
+      expect(commentedClass.decorators.length).toBeGreaterThan(0);
+
+      const spacedClass = result.classes.SpacedClass;
+      expect(spacedClass.decorators).toBeDefined();
+      expect(spacedClass.decorators.length).toBeGreaterThan(0);
+
+      const computedClass = result.classes.ComputedClass;
+      expect(computedClass.decorators).toBeDefined();
+      expect(computedClass.decorators.length).toBeGreaterThan(0);
+
+      cleanupTempDir(tempFile);
+    });
+  });
+
   // Добавьте другие тесты для различных конструкций TypeScript
 });

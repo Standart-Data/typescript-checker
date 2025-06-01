@@ -2,6 +2,7 @@ const fs = require("fs");
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
 const t = require("@babel/types");
+const ts = require("typescript");
 
 // Импортируем новые модули
 const { parseSimpleFunctionDeclaration } = require("./function-parser");
@@ -32,6 +33,107 @@ const {
 } = require("./processors");
 
 const { isHookCall, processHook } = require("./hooks");
+
+/**
+ * Извлекает информацию о перегрузках функций через TypeScript API
+ * @param {string} filePath - путь к файлу
+ * @param {string} code - исходный код
+ * @returns {Object} объект с информацией о перегрузках
+ */
+function extractFunctionOverloads(filePath, code) {
+  const overloads = {};
+
+  try {
+    // Создаем TypeScript program для анализа перегрузок
+    const compilerOptions = {
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      jsx: ts.JsxEmit.React,
+      allowJs: true,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      experimentalDecorators: true,
+      emitDecoratorMetadata: true,
+    };
+
+    // Создаем программу без системы файлов
+    const program = ts.createProgram([filePath], compilerOptions, {
+      getSourceFile: (fileName) => {
+        if (fileName === filePath) {
+          return ts.createSourceFile(
+            fileName,
+            code,
+            ts.ScriptTarget.ESNext,
+            true
+          );
+        }
+        return undefined;
+      },
+      writeFile: () => {},
+      getCurrentDirectory: () => "",
+      getDirectories: () => [],
+      fileExists: (fileName) => fileName === filePath,
+      readFile: (fileName) => (fileName === filePath ? code : ""),
+      getCanonicalFileName: (fileName) => fileName,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => "\n",
+      getDefaultLibFileName: () => "lib.d.ts",
+    });
+
+    const checker = program.getTypeChecker();
+    const sourceFile = program.getSourceFile(filePath);
+
+    if (!sourceFile) {
+      return overloads;
+    }
+
+    function visit(node) {
+      if (ts.isFunctionDeclaration(node) && node.name) {
+        const functionName = node.name.text;
+
+        if (!overloads[functionName]) {
+          overloads[functionName] = [];
+        }
+
+        // Если это перегрузка (нет тела), добавляем её
+        if (!node.body) {
+          const signature = checker.getSignatureFromDeclaration(node);
+          let returnType = "unknown";
+          if (signature) {
+            returnType = checker.typeToString(signature.getReturnType());
+          }
+
+          const parameters =
+            node.parameters?.map((param) => ({
+              name: param.name?.getText() || "",
+              type: param.type
+                ? checker.typeToString(checker.getTypeAtLocation(param.type))
+                : "any",
+              optional: !!param.questionToken,
+              defaultValue: param.initializer?.getText() || null,
+            })) || [];
+
+          overloads[functionName].push({
+            parameters,
+            returnType,
+          });
+        }
+      }
+
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+  } catch (error) {
+    // В случае ошибки просто не добавляем перегрузки
+    console.warn(
+      `Не удалось извлечь перегрузки из ${filePath}:`,
+      error.message
+    );
+  }
+
+  return overloads;
+}
 
 /**
  * Парсит React/TypeScript файлы и извлекает метаданные.
@@ -72,6 +174,12 @@ function parseReact(filePaths) {
     const code = fs.readFileSync(filePath, "utf8");
     const normalizedCode = normalizeLineEndings(code);
 
+    // Извлекаем информацию о перегрузках через TypeScript API
+    const functionOverloads = extractFunctionOverloads(
+      filePath,
+      normalizedCode
+    );
+
     let ast;
     try {
       ast = parser.parse(normalizedCode, {
@@ -81,7 +189,7 @@ function parseReact(filePaths) {
         plugins: [
           "jsx",
           "typescript",
-          "decorators-legacy",
+          "decorators-legacy", // Babel 7 стабильная конфигурация
           "classProperties",
           "objectRestSpread",
           "functionBind",
@@ -92,7 +200,6 @@ function parseReact(filePaths) {
           "optionalChaining",
           "optionalCatchBinding",
           "throwExpressions",
-          ["pipelineOperator", { proposal: "minimal" }],
         ],
       });
     } catch (error) {
@@ -135,16 +242,24 @@ function parseReact(filePaths) {
       // Функции
       FunctionDeclaration(path) {
         const isDeclared = path.node.declare || false;
+        const funcName = path.node.id?.name;
 
         if (isFunctionDeclarationComponent(path)) {
           processFunctionDeclarationComponent(path, normalizedCode, result);
         } else {
+          // Получаем перегрузки для этой функции, если они есть
+          const overloads =
+            funcName && functionOverloads[funcName]
+              ? functionOverloads[funcName]
+              : null;
+
           parseSimpleFunctionDeclaration(
             path,
             result,
             isDeclared,
             false,
-            normalizedCode
+            normalizedCode,
+            overloads
           );
         }
 

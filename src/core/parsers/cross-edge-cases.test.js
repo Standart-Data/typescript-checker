@@ -264,9 +264,68 @@ describe("Cross-Parser Edge Cases", () => {
         }
       `,
       check: (tsResult, reactResult) => {
+        // Проверяем, что функция существует в обоих парсерах
         expect(tsResult.functions.process).toBeDefined();
-        expect(tsResult.functions.process.isExported).toBe(
-          reactResult.exports.process === true
+        expect(reactResult.functions.process).toBeDefined();
+
+        // Проверяем экспорт
+        expect(tsResult.functions.process.isExported).toBe(true);
+        expect(reactResult.exports.process).toBe(true);
+
+        // Проверяем количество перегрузок в TypeScript парсере
+        const tsOverloadCount = Object.keys(tsResult.functions.process).filter(
+          (k) => k.startsWith("overload")
+        ).length;
+        expect(tsOverloadCount).toBe(2);
+
+        // Проверяем количество перегрузок в React парсере
+        const reactOverloadCount = Object.keys(
+          reactResult.functions.process
+        ).filter((k) => k.startsWith("overload")).length;
+        expect(reactOverloadCount).toBe(2);
+
+        // Проверяем первую перегрузку в TypeScript парсере
+        expect(tsResult.functions.process.overload0).toBeDefined();
+        expect(tsResult.functions.process.overload0.returnResult[0]).toBe(
+          "string"
+        );
+        expect(
+          tsResult.functions.process.overload0.params.map((p) => p.type)
+        ).toEqual(["string"]);
+
+        // Проверяем первую перегрузку в React парсере
+        expect(reactResult.functions.process.overload0).toBeDefined();
+        expect(reactResult.functions.process.overload0.returnResult[0]).toBe(
+          "string"
+        );
+        expect(
+          reactResult.functions.process.overload0.params.map((p) => p.type)
+        ).toEqual(["string"]);
+
+        // Проверяем вторую перегрузку в TypeScript парсере
+        expect(tsResult.functions.process.overload1).toBeDefined();
+        expect(tsResult.functions.process.overload1.returnResult[0]).toBe(
+          "number"
+        );
+        expect(
+          tsResult.functions.process.overload1.params.map((p) => p.type)
+        ).toEqual(["number"]);
+
+        // Проверяем вторую перегрузку в React парсере
+        expect(reactResult.functions.process.overload1).toBeDefined();
+        expect(reactResult.functions.process.overload1.returnResult[0]).toBe(
+          "number"
+        );
+        expect(
+          reactResult.functions.process.overload1.params.map((p) => p.type)
+        ).toEqual(["number"]);
+
+        // Проверяем основную реализацию - параметры должны быть в формате массивов
+        expect(tsResult.functions.process.params.map((p) => p.type)).toEqual([
+          ["string | number"],
+        ]);
+        expect(reactResult.functions.process.params.map((p) => p.type)).toEqual(
+          [["string | number"]]
         );
       },
     },
@@ -291,6 +350,92 @@ describe("Cross-Parser Edge Cases", () => {
         expect(tsResult.functions.createHandler.isExported).toBe(
           reactResult.exports.createHandler === true
         );
+      },
+    },
+    {
+      name: "getPerimeter Function Overloads",
+      tsContent: `
+        function getPerimeter(radius: number): number;
+        function getPerimeter(width: number, height: number): number;
+        function getPerimeter(value1: number, value2?: number): number {
+            if (value2 === undefined) {
+                return 2 * Math.PI * value1;
+            } else {
+                return 2 * (value1 + value2);
+            }
+        }
+      `,
+      reactContent: `
+        function getPerimeter(radius: number): number;
+        function getPerimeter(width: number, height: number): number;
+        function getPerimeter(value1: number, value2?: number): number {
+            if (value2 === undefined) {
+                return 2 * Math.PI * value1;
+            } else {
+                return 2 * (value1 + value2);
+            }
+        }
+      `,
+      check: (tsResult, reactResult) => {
+        // Проверяем, что функция существует в обоих парсерах
+        expect(tsResult.functions.getPerimeter).toBeDefined();
+        expect(reactResult.functions.getPerimeter).toBeDefined();
+
+        // Проверяем количество перегрузок
+        const tsOverloadCount = Object.keys(
+          tsResult.functions.getPerimeter
+        ).filter((k) => k.startsWith("overload")).length;
+        const reactOverloadCount = Object.keys(
+          reactResult.functions.getPerimeter
+        ).filter((k) => k.startsWith("overload")).length;
+        expect(tsOverloadCount).toBe(2);
+        expect(reactOverloadCount).toBe(2);
+
+        // Проверяем первую перегрузку (radius: number)
+        expect(
+          tsResult.functions.getPerimeter.overload0.params.map((p) => p.type)
+        ).toEqual(["number"]);
+        expect(
+          reactResult.functions.getPerimeter.overload0.params.map((p) => p.type)
+        ).toEqual(["number"]);
+        expect(tsResult.functions.getPerimeter.overload0.returnResult[0]).toBe(
+          "number"
+        );
+        expect(
+          reactResult.functions.getPerimeter.overload0.returnResult[0]
+        ).toBe("number");
+
+        // Проверяем вторую перегрузку (width: number, height: number)
+        expect(
+          tsResult.functions.getPerimeter.overload1.params.map((p) => p.type)
+        ).toEqual(["number", "number"]);
+        expect(
+          reactResult.functions.getPerimeter.overload1.params.map((p) => p.type)
+        ).toEqual(["number", "number"]);
+        expect(tsResult.functions.getPerimeter.overload1.returnResult[0]).toBe(
+          "number"
+        );
+        expect(
+          reactResult.functions.getPerimeter.overload1.returnResult[0]
+        ).toBe("number");
+
+        // Проверяем основную реализацию
+        expect(
+          tsResult.functions.getPerimeter.params.map((p) => p.type)
+        ).toEqual([["number"], ["number"]]);
+        expect(
+          reactResult.functions.getPerimeter.params.map((p) => p.type)
+        ).toEqual([["number"], ["number"]]);
+        expect(tsResult.functions.getPerimeter.returnResult[0]).toBe("number");
+        expect(reactResult.functions.getPerimeter.returnResult[0]).toBe(
+          "number"
+        );
+
+        // Проверяем, что у основной реализации есть body
+        expect(tsResult.functions.getPerimeter.body).toBeDefined();
+        expect(reactResult.functions.getPerimeter.body).toBeDefined();
+        expect(tsResult.functions.getPerimeter.body).toContain("Math.PI");
+        expect(reactResult.functions.getPerimeter.body).toContain("Math.PI");
       },
     },
 

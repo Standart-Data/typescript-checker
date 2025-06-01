@@ -1,5 +1,5 @@
 const ts = require("typescript");
-const { parseDecorators } = require("./decorators");
+const { parseDecorators, parseParameterDecorators } = require("./decorators");
 const { getCommonModifiers } = require("./common-utils");
 const { normalizeLineEndings } = require("./utils");
 
@@ -58,7 +58,26 @@ function enhanceGenericTypeRelations(functionParams) {
 }
 
 /**
- * Парсит объявление функции
+ * Парсит параметры функции
+ * @param {ts.NodeArray<ts.ParameterDeclaration>} parameters - параметры функции
+ * @param {ts.TypeChecker} checker - type checker
+ * @returns {Array} массив параметров
+ */
+function parseParameters(parameters, checker) {
+  return (
+    parameters?.map((param) => ({
+      name: param.name?.getText() || "",
+      type: param.type
+        ? checker.typeToString(checker.getTypeAtLocation(param.type))
+        : "any",
+      optional: !!param.questionToken,
+      defaultValue: param.initializer?.getText() || null,
+    })) || []
+  );
+}
+
+/**
+ * Парсит объявление функции с поддержкой перегрузок
  * @param {ts.FunctionDeclaration} node - нода функции
  * @param {Object} context - контекст для сохранения результатов
  * @param {ts.TypeChecker} checker - type checker
@@ -75,6 +94,7 @@ function parseSimpleFunctionDeclaration(
   if (node.name) {
     const functionName = node.name.text;
     const decorators = parseDecorators(node);
+    const paramDecorators = parseParameterDecorators(node.parameters);
     const signature = checker.getSignatureFromDeclaration(node);
     let returnType = "void";
     if (signature) {
@@ -87,49 +107,123 @@ function parseSimpleFunctionDeclaration(
       isModuleMember
     );
 
-    let functionParams =
-      node.parameters?.map((param) => ({
-        name: param.name?.getText() || "",
-        type: [
-          param.type
-            ? checker.typeToString(checker.getTypeAtLocation(param.type))
-            : "any",
-        ], // Обратная совместимость: type как массив строк
-        optional: !!param.questionToken,
-        initializer: param.initializer?.getText(),
-      })) || [];
+    // Generics и тело функции
+    const genericsTypes = node.typeParameters
+      ? node.typeParameters.map((tp) => tp.getText().trim())
+      : [];
+    const body = node.body?.getText();
+
+    // Парсим параметры для нового формата
+    const parameters = parseParameters(node.parameters, checker);
+
+    // Парсим параметры для обратной совместимости (старый формат)
+    let functionParams = parameters.map((p) => ({
+      ...p,
+      type: [p.type], // Оборачиваем в массив для обратной совместимости
+      initializer: p.defaultValue,
+    }));
 
     // Проверяем, есть ли у функции дженерики и улучшаем связи типов
     if (node.typeParameters && node.typeParameters.length > 0) {
       functionParams = enhanceGenericTypeRelations(functionParams);
     }
 
-    context.functions[functionName] = {
-      name: functionName,
-      parameters: functionParams.map((p) => ({
-        // Новый формат для parameters
-        name: p.name,
-        type: p.type[0], // Извлекаем строку из массива для нового формата
-        optional: p.optional,
-        initializer: p.initializer,
-      })),
-      params: functionParams, // Обратная совместимость: старый формат с type как массивом
-      returnType: node.type
-        ? checker.typeToString(checker.getTypeAtLocation(node.type))
-        : returnType,
-      returnResult: [
-        node.type // Обратная совместимость: returnResult как массив
+    // Проверяем, есть ли уже функция с таким именем
+    if (context.functions[functionName]) {
+      // Это может быть перегрузка или основная реализация
+      const existingFunction = context.functions[functionName];
+
+      if (node.body) {
+        // Основная реализация функции
+        existingFunction.parameters = parameters;
+        existingFunction.params = functionParams;
+        existingFunction.returnType = node.type
+          ? checker.typeToString(checker.getTypeAtLocation(node.type))
+          : returnType;
+        existingFunction.returnResult = [
+          node.type
+            ? checker.typeToString(checker.getTypeAtLocation(node.type))
+            : returnType,
+        ];
+        existingFunction.genericsTypes = genericsTypes;
+        existingFunction.body = normalizeLineEndings(node.body.getText());
+        existingFunction.isAsync = modifiers.isAsync;
+        existingFunction.isGenerator = modifiers.isGenerator;
+        existingFunction.isDefault = modifiers.isDefault;
+        existingFunction.isExported = modifiers.isExported;
+        existingFunction.isDeclared = modifiers.isDeclared;
+        existingFunction.decorators =
+          decorators.length > 0 ? decorators : undefined;
+        existingFunction.paramDecorators =
+          paramDecorators.length > 0 ? paramDecorators : undefined;
+      } else {
+        // Добавление перегрузки
+        const overloadCount = Object.keys(existingFunction).filter((k) =>
+          k.startsWith("overload")
+        ).length;
+        const overloadKey = `overload${overloadCount}`;
+
+        existingFunction[overloadKey] = {
+          name: functionName,
+          parameters: parameters,
+          params: parameters.map((p) => ({ ...p, type: p.type })), // Убираем обёртку в массив для перегрузок
+          returnType: node.type
+            ? checker.typeToString(checker.getTypeAtLocation(node.type))
+            : returnType,
+          returnResult: [
+            node.type
+              ? checker.typeToString(checker.getTypeAtLocation(node.type))
+              : returnType,
+          ],
+          genericsTypes,
+          body: null, // У перегрузок нет тела
+        };
+      }
+    } else {
+      // Первое объявление функции
+      context.functions[functionName] = {
+        name: functionName,
+        parameters: parameters,
+        params: functionParams,
+        returnType: node.type
           ? checker.typeToString(checker.getTypeAtLocation(node.type))
           : returnType,
-      ],
-      isAsync: modifiers.isAsync,
-      isGenerator: modifiers.isGenerator,
-      isDefault: modifiers.isDefault,
-      isExported: modifiers.isExported,
-      isDeclared: modifiers.isDeclared,
-      decorators: decorators.length > 0 ? decorators : undefined,
-      body: node.body ? normalizeLineEndings(node.body.getText()) : undefined,
-    };
+        returnResult: [
+          node.type
+            ? checker.typeToString(checker.getTypeAtLocation(node.type))
+            : returnType,
+        ],
+        genericsTypes,
+        isAsync: modifiers.isAsync,
+        isGenerator: modifiers.isGenerator,
+        isDefault: modifiers.isDefault,
+        isExported: modifiers.isExported,
+        isDeclared: modifiers.isDeclared,
+        decorators: decorators.length > 0 ? decorators : undefined,
+        paramDecorators:
+          paramDecorators.length > 0 ? paramDecorators : undefined,
+        body: node.body ? normalizeLineEndings(node.body.getText()) : undefined,
+      };
+
+      // Если это перегрузка (нет тела), добавляем её как overload0
+      if (!node.body) {
+        context.functions[functionName].overload0 = {
+          name: functionName,
+          parameters: parameters,
+          params: parameters.map((p) => ({ ...p, type: p.type })), // Убираем обёртку в массив для перегрузок
+          returnType: node.type
+            ? checker.typeToString(checker.getTypeAtLocation(node.type))
+            : returnType,
+          returnResult: [
+            node.type
+              ? checker.typeToString(checker.getTypeAtLocation(node.type))
+              : returnType,
+          ],
+          genericsTypes,
+          body: null,
+        };
+      }
+    }
   }
 }
 

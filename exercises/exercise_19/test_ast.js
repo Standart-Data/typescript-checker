@@ -11,7 +11,7 @@ describe("Function Overload Parsing Tests", function () {
 
     // Проверка количества перегрузок
     assert.strictEqual(
-      Object.keys(addFunction).filter(k => k.startsWith("overload")).length,
+      Object.keys(addFunction).filter((k) => k.startsWith("overload")).length,
       2,
       "Должно быть 2 перегрузки"
     );
@@ -19,7 +19,7 @@ describe("Function Overload Parsing Tests", function () {
 
   it("Первая перегрузка (string) должна быть корректной", function () {
     const overload0 = allVariables.functions.add.overload0;
-    
+
     assert.strictEqual(
       overload0.returnResult[0],
       "string",
@@ -27,13 +27,13 @@ describe("Function Overload Parsing Tests", function () {
     );
 
     assert.deepStrictEqual(
-      overload0.params.map(p => p.type),
+      overload0.params.map((p) => p.type),
       ["string", "string"],
       "Параметры должны быть string, string"
     );
 
     assert.deepStrictEqual(
-      overload0.params.map(p => p.defaultValue),
+      overload0.params.map((p) => p.defaultValue),
       [null, null],
       "Значения по умолчанию должны отсутствовать"
     );
@@ -41,7 +41,7 @@ describe("Function Overload Parsing Tests", function () {
 
   it("Вторая перегрузка (number) должна быть корректной", function () {
     const overload1 = allVariables.functions.add.overload1;
-    
+
     assert.strictEqual(
       overload1.returnResult[0],
       "number",
@@ -49,7 +49,7 @@ describe("Function Overload Parsing Tests", function () {
     );
 
     assert.deepStrictEqual(
-      overload1.params.map(p => p.type),
+      overload1.params.map((p) => p.type),
       ["number", "number"],
       "Параметры должны быть number, number"
     );
@@ -63,7 +63,7 @@ describe("Function Overload Parsing Tests", function () {
 
   it("Основная реализация должна содержать корректные данные", function () {
     const implementation = allVariables.functions.add;
-    
+
     assert.strictEqual(
       implementation.returnResult[0],
       "any",
@@ -71,8 +71,8 @@ describe("Function Overload Parsing Tests", function () {
     );
 
     assert.deepStrictEqual(
-      implementation.params.map(p => p.type),
-      ["any", "any"],
+      implementation.params.map((p) => p.type),
+      [["any"], ["any"]],
       "Параметры реализации должны быть any, any"
     );
 
@@ -84,11 +84,11 @@ describe("Function Overload Parsing Tests", function () {
 
   it("Общая структура функции должна сохранять совместимость", function () {
     const addFunction = allVariables.functions.add;
-    
+
     // Проверка legacy-полей
     assert.deepStrictEqual(
-      addFunction.params.map(p => p.type),
-      ["any", "any"],
+      addFunction.params.map((p) => p.type),
+      [["any"], ["any"]],
       "Основные параметры должны соответствовать реализации"
     );
 

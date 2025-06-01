@@ -1,5 +1,5 @@
 const ts = require("typescript");
-const { parseDecorators } = require("./decorators");
+const { parseDecorators, parseParameterDecorators } = require("./decorators");
 const {
   getCommonModifiers,
   createOldFormatConstructorParam,
@@ -143,8 +143,13 @@ function parseSimpleClassDeclaration(
           member,
           memberModifiers.isReadonly
         );
-      } else if (ts.isMethodDeclaration(member)) {
+      } else if (
+        ts.isMethodDeclaration(member) ||
+        ts.isGetAccessorDeclaration(member) ||
+        ts.isSetAccessorDeclaration(member)
+      ) {
         const memberModifiers = getCommonModifiers(member);
+        const paramDecorators = parseParameterDecorators(member.parameters);
 
         const methodSignature = checker.getSignatureFromDeclaration(member);
         const methodParams =
@@ -175,6 +180,8 @@ function parseSimpleClassDeclaration(
           ...memberModifiers,
           decorators:
             memberDecorators.length > 0 ? memberDecorators : undefined,
+          paramDecorators:
+            paramDecorators.length > 0 ? paramDecorators : undefined,
           body: member.body
             ? normalizeLineEndings(member.body.getText())
             : undefined,
