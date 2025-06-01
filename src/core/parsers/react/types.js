@@ -68,6 +68,13 @@ function getTSType(typeNode) {
     return typeNode.types.map((type) => getTSType(type)).join(" & ");
   }
 
+  // Операторы типов (readonly, keyof, etc.)
+  if (t.isTSTypeOperator(typeNode)) {
+    const operator = typeNode.operator;
+    const operandType = getTSType(typeNode.typeAnnotation);
+    return `${operator} ${operandType}`;
+  }
+
   // Тип функции
   if (t.isTSFunctionType(typeNode)) {
     const params = typeNode.parameters

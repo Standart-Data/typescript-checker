@@ -65,6 +65,70 @@ function parseObjectLiteral(objectNode, checker) {
 }
 
 /**
+ * Анализирует type assertion или satisfies оператор в инициализаторе переменной
+ * @param {ts.Node} initializer - инициализатор переменной
+ * @param {ts.TypeChecker} checker - type checker
+ * @returns {Object|null} информация о type assertion
+ */
+function analyzeTypeAssertion(initializer, checker) {
+  if (!initializer) return null;
+
+  // Сначала проверяем на type assertion в иницализаторе
+  let targetNode = initializer;
+
+  // Обработка type assertion (value as Type)
+  if (ts.isAsExpression(targetNode)) {
+    const typeText = targetNode.type.getText();
+    // Специальная проверка для as const
+    if (typeText === "const") {
+      return {
+        operator: "as",
+        type: "const",
+        originalExpression: targetNode.expression.getText(),
+        fullExpression: targetNode.getText(),
+      };
+    }
+
+    return {
+      operator: "as",
+      type: checker.typeToString(checker.getTypeAtLocation(targetNode.type)),
+      originalExpression: targetNode.expression.getText(),
+      fullExpression: targetNode.getText(),
+    };
+  }
+
+  // Обработка type assertion angle bracket style (<Type>value)
+  if (
+    ts.isTypeAssertionExpression &&
+    ts.isTypeAssertionExpression(targetNode)
+  ) {
+    return {
+      operator: "as",
+      type: checker.typeToString(checker.getTypeAtLocation(targetNode.type)),
+      originalExpression: targetNode.expression.getText(),
+      fullExpression: targetNode.getText(),
+    };
+  }
+
+  // Обработка satisfies (value satisfies Type) - только для TS 4.9+
+  if (ts.isSatisfiesExpression && ts.isSatisfiesExpression(targetNode)) {
+    return {
+      operator: "satisfies",
+      type: checker.typeToString(checker.getTypeAtLocation(targetNode.type)),
+      originalExpression: targetNode.expression.getText(),
+      fullExpression: targetNode.getText(),
+    };
+  }
+
+  // Проверяем рекурсивно для вложенных выражений
+  if (ts.isParenthesizedExpression(targetNode)) {
+    return analyzeTypeAssertion(targetNode.expression, checker);
+  }
+
+  return null;
+}
+
+/**
  * Проверяет, является ли переменная функцией
  * @param {ts.VariableDeclaration} declaration - декларация переменной
  * @param {ts.TypeChecker} checker - type checker
@@ -235,6 +299,12 @@ function parseSimpleVariableStatement(
       const varName = declaration.name.text;
       const varType = getVariableType(declaration, checker);
 
+      // Анализируем type assertion
+      const typeAssertion = analyzeTypeAssertion(
+        declaration.initializer,
+        checker
+      );
+
       // Определяем значение переменной
       let parsedValue = "";
       if (declaration.initializer) {
@@ -254,6 +324,7 @@ function parseSimpleVariableStatement(
         declarationType: getDeclarationType(node),
         hasInitializer: !!declaration.initializer,
         initializerValue: declaration.initializer?.getText(),
+        typeAssertion: typeAssertion, // Новое поле для type assertion
         isExported: modifiers.isExported,
         isDeclared: modifiers.isDeclared,
         // Поля для обратной совместимости со старыми тестами

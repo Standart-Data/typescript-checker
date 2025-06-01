@@ -6,6 +6,8 @@ import "./modules-namespaces.test.js";
 import "./react-specific.test.js";
 import "./function-bodies.test.js";
 import "./utility-types.test.js";
+import "./indexed-access-types.test.js";
+import "./type-assertions.test.js";
 
 // Этот файл служит точкой входа для всех тестов совместимости
 // между TypeScript и React парсерами.
