@@ -59,14 +59,14 @@ class Task {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      this.data = await response.json(); // Присваиваем загруженные данные свойству data
+      this.data = await response.json();
 
       this.confirmationCode = this.generateCode(this.data.strange_word);
 
       this.state.transition("loaded");
     } catch (error) {
       console.error("Ошибка загрузки данных:", error);
-      this.state.transition("error", error); // Передаем ошибку в состояние "error"
+      this.state.transition("error", error);
     }
     return this;
   }

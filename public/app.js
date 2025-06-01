@@ -42,6 +42,9 @@ class App {
     this.components.exercise.update({ exercise: this.task.data });
 
     const apiFiles = this.task.fields || [];
+    // ВАЖНО: сохраняем оригинальные данные из API отдельно для reset()
+    this.originalApiFiles = JSON.parse(JSON.stringify(apiFiles));
+
     const apiFileMap = {};
     apiFiles.forEach((file) => {
       apiFileMap[file.file_name] = file.value;
@@ -67,6 +70,14 @@ class App {
           (f) => f.file_name === savedFile.file_name
         );
 
+        // Защита от пустых значений из localStorage
+        if (!savedFile.value || savedFile.value.trim() === "") {
+          console.warn(
+            `Игнорируем пустое значение для файла ${savedFile.file_name} из localStorage`
+          );
+          return;
+        }
+
         if (existingFileIndex !== -1) {
           displayData[existingFileIndex].value = savedFile.value;
         } else {
@@ -83,7 +94,6 @@ class App {
     }
 
     this.components.editor.update({ fields: displayData });
-    console.log("Загруженные файлы:", displayData);
 
     this.highlightEditor();
 
@@ -106,53 +116,105 @@ class App {
         const editorId = editorElement.id;
         const index = editorId.split("-").pop();
 
-        const tab = document.querySelector(
-          `.editor-tab[data-index="${index}"]`
-        );
-        let mode = "javascript";
-        if (tab) {
-          const fileName = tab.textContent.trim();
-          mode = this.getEditorMode(fileName);
+        const initialValue = editorElement.value || "";
+
+        try {
+          if (!CM || !CM.state || !CM.view) {
+            throw new Error("CodeMirror components not available");
+          }
+
+          // Определяем подходящий язык для файла
+          const tab = document.querySelector(
+            `.editor-tab[data-index="${index}"]`
+          );
+          let languageExtension = null;
+
+          if (tab) {
+            const fileName = tab.textContent.trim();
+            languageExtension = this.getLanguageExtension(fileName);
+          }
+
+          const state = CM.state.EditorState.create({
+            doc: initialValue,
+            extensions: [
+              CM.basicSetup.basicSetup,
+              // Отключаем автодополнение
+              CM.autocomplete.autocompletion({
+                activateOnTyping: false,
+                override: [],
+              }),
+              // Добавляем только подходящий язык вместо обоих
+              ...(languageExtension ? [languageExtension] : []),
+              CM.view.EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                  editorElement.value = update.state.doc.toString();
+                }
+              }),
+              ...MaterialDarkerTheme.materialDarker,
+              CM.view.EditorView.theme({
+                "&": { height: "100%" },
+                ".cm-scroller": { overflow: "auto" },
+              }),
+            ],
+          });
+
+          const editor = new CM.view.EditorView({
+            state: state,
+            parent: editorElement.parentNode,
+          });
+
+          editorElement.style.display = "none";
+          app.editors[editorId] = editor;
+        } catch (error) {
+          console.error(`Ошибка инициализации редактора ${editorId}:`, error);
         }
-
-        const editor = CodeMirror.fromTextArea(editorElement, {
-          lineNumbers: true,
-          lineWrapping: true,
-          matchBrackets: true,
-          mode: mode,
-          theme: "material-darker",
-        });
-
-        app.editors[editorId] = editor;
       });
   }
 
-  getEditorMode(filename) {
+  getLanguageExtension(filename) {
     const ext = filename.split(".").pop().toLowerCase();
+    const fullExt = filename.includes(".d.ts") ? "d.ts" : ext;
 
-    switch (ext) {
-      case "ts":
-        return "text/typescript";
-      case "tsx":
-        return "text/typescript-jsx";
-      case "js":
-        return "text/javascript";
-      case "jsx":
-        return "text/jsx";
-      case "css":
-        return "text/css";
-      case "scss":
-        return "text/x-scss";
-      case "less":
-        return "text/x-less";
-      case "json":
-        return "application/json";
-      case "html":
-        return "text/html";
-      case "xml":
-        return "text/xml";
-      default:
-        return "text/javascript"; // По умолчанию JavaScript
+    try {
+      // Проверяем доступность языковых объектов
+      if (
+        typeof CodeMirrorJavaScript === "undefined" &&
+        typeof CodeMirrorCSS === "undefined"
+      ) {
+        console.warn("Language extensions not available");
+        return null;
+      }
+
+      switch (fullExt) {
+        case "d.ts":
+        case "ts":
+        case "tsx":
+        case "js":
+        case "jsx":
+          if (
+            typeof CodeMirrorJavaScript !== "undefined" &&
+            CodeMirrorJavaScript.javascript
+          ) {
+            return CodeMirrorJavaScript.javascript();
+          }
+          return null;
+        case "css":
+          if (typeof CodeMirrorCSS !== "undefined" && CodeMirrorCSS.css) {
+            return CodeMirrorCSS.css();
+          }
+          return null;
+        default:
+          if (
+            typeof CodeMirrorJavaScript !== "undefined" &&
+            CodeMirrorJavaScript.javascript
+          ) {
+            return CodeMirrorJavaScript.javascript();
+          }
+          return null;
+      }
+    } catch (error) {
+      console.warn("Language extension error:", error);
+      return null;
     }
   }
 
@@ -171,13 +233,23 @@ class App {
       const editorId = `editor__ide-${index}`;
       const editor = app.getEditorInstance(editorId);
       if (editor) {
-        return editor.getValue();
+        return editor.state.doc.toString();
+      }
+
+      // Fallback - попробуем получить из textarea если редактор не инициализирован
+      const textareaElement = document.querySelector(`#${editorId}`);
+      if (textareaElement && textareaElement.value) {
+        return textareaElement.value;
       }
     }
 
-    // Fallback для обратной совместимости
+    // Последний fallback для обратной совместимости
     const ideNode = this.components.editor.refs["ide"];
-    return ideNode.getValue();
+    if (ideNode && ideNode.state) {
+      return ideNode.state.doc.toString();
+    }
+
+    return "";
   }
 
   async check() {
@@ -192,7 +264,7 @@ class App {
       const tab = document.querySelector(`.editor-tab[data-index="${index}"]`);
       if (tab) {
         const fileName = tab.textContent.trim();
-        files[fileName] = editor.getValue();
+        files[fileName] = editor.state.doc.toString();
       }
     }
 
@@ -242,7 +314,7 @@ class App {
       const tab = document.querySelector(`.editor-tab[data-index="${index}"]`);
       if (tab) {
         const fileKey = tab.textContent.trim();
-        editorFiles[fileKey] = editor.getValue();
+        editorFiles[fileKey] = editor.state.doc.toString();
       }
     }
 
@@ -353,12 +425,15 @@ class App {
   saveToLocalStorage() {
     try {
       const fileName = this.getActiveFileName();
-      localStorage.setItem(
-        this.taskID + "_" + fileName,
-        this.getEditorValues()
-      );
+      const editorValue = this.getEditorValues();
+
+      // Не сохраняем пустые значения - это может перезаписать правильные данные
+      if (!editorValue || editorValue.trim() === "") {
+        return;
+      }
+
+      localStorage.setItem(this.taskID + "_" + fileName, editorValue);
       localStorage.setItem(this.taskID + "_activeFile", fileName);
-      console.log(`Код успешно сохранен в localStorage.`);
     } catch (error) {
       console.error(`Ошибка при сохранении в localStorage:`, error);
     }
@@ -366,7 +441,6 @@ class App {
 
   reset() {
     try {
-      // Удаляем сохраненные данные из localStorage
       const keys = Object.keys(localStorage);
       keys.forEach((key) => {
         if (key.startsWith(this.taskID)) {
@@ -374,37 +448,47 @@ class App {
         }
       });
 
-      // Очищаем существующие редакторы
       app.editors = {};
 
-      const apiFiles = this.task.fields || [];
+      const apiFiles = this.originalApiFiles || this.task.fields || [];
 
-      // Обновляем компонент editor с исходными данными
+      if (apiFiles.length === 0) {
+        return;
+      }
+
       this.components.editor.update({ fields: apiFiles });
-      console.log("Файлы сброшены до оригинальных из API:", apiFiles);
 
       if (apiFiles.length > 0) {
         this.activeFileName = apiFiles[0].file_name;
       }
 
-      // Даем время DOM обновиться, затем инициализируем редакторы
       setTimeout(() => {
         this.highlightEditor();
 
-        // Активируем первую вкладку
         setTimeout(() => {
           const firstTab = document.querySelector(
             '.editor-tab[data-index="0"]'
           );
+
           if (firstTab) {
             firstTab.click();
+
+            setTimeout(() => {
+              const editorValue = this.getEditorValues();
+              const originalValue = apiFiles[0]?.value || "";
+
+              if (!editorValue && originalValue) {
+                console.warn(
+                  "Редактор пустой после reset, повторная инициализация"
+                );
+                this.highlightEditor();
+              }
+            }, 200);
           }
         }, 100);
       }, 100);
-
-      console.log("Запомненный код удален из localStorage.");
     } catch (error) {
-      console.error("Ошибка при удалении из localStorage:", error);
+      console.error("Ошибка при сбросе:", error);
     }
   }
 
@@ -485,7 +569,7 @@ function setupTabs() {
         const editorId = `editor__ide-${index}`;
         const cm = app.getEditorInstance(editorId);
         if (cm) {
-          cm.refresh();
+          cm.requestMeasure();
         }
       }
     });
@@ -516,7 +600,7 @@ app.check = function () {
     const tab = document.querySelector(`.editor-tab[data-index="${index}"]`);
     if (tab) {
       const fileName = tab.textContent.trim();
-      files[fileName] = editor.getValue();
+      files[fileName] = editor.state.doc.toString();
     }
   }
 
