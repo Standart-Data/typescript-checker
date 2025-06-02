@@ -1,0 +1,10 @@
+.avatar {
+  border-radius: 50%;
+}
+.highlight-name {
+  color: #0b79d0;
+  font-weight: bold;
+}
+.shadow-effect {
+  box-shadow: 0 2px 4px #ccc;
+}
