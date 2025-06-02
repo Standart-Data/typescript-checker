@@ -24,7 +24,7 @@ function validateTypeScript(code, options = {}) {
     fs.writeFileSync(tmpFile.name, code);
 
     const compilerOptions = {
-      target: ts.ScriptTarget.ES2024,
+      target: ts.ScriptTarget.ES2020,
       module: ts.ModuleKind.ESNext,
       strict: true,
       skipLibCheck: true,
@@ -34,6 +34,9 @@ function validateTypeScript(code, options = {}) {
       jsxFactory: options.jsxFactory || undefined,
       jsxFragmentFactory: options.jsxFragmentFactory || undefined,
       declaration: isDeclaration,
+      experimentalDecorators: true,
+      emitDecoratorMetadata: true,
+      useDefineForClassFields: false,
     };
 
     const program = ts.createProgram([tmpFile.name], compilerOptions);
@@ -88,7 +91,7 @@ function processTypeScript(code, options = {}) {
 
     const transpileResult = ts.transpileModule(code, {
       compilerOptions: {
-        target: ts.ScriptTarget.ES2024,
+        target: ts.ScriptTarget.ES2020,
         module: ts.ModuleKind.ESNext,
         strict: true,
         skipLibCheck: true,
@@ -97,7 +100,9 @@ function processTypeScript(code, options = {}) {
         jsx: isJSX ? ts.JsxEmit.React : undefined,
         jsxFactory: options.jsxFactory || undefined,
         jsxFragmentFactory: options.jsxFragmentFactory || undefined,
-        // declaration: isDeclaration, // не нужно здесь для транспиляции
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+        useDefineForClassFields: false,
       },
     });
     return transpileResult.outputText;
