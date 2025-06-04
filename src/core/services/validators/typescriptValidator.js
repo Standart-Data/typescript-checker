@@ -21,7 +21,31 @@ function createCustomCompilerHost(compilerOptions, tempProject) {
     options
   ) => {
     return moduleNames.map((moduleName) => {
-      // Проверяем, есть ли наш заглушка модуля
+      // Для локальных импортов (начинающихся с ./ или ../) используем стандартное разрешение
+      if (moduleName.startsWith("./") || moduleName.startsWith("../")) {
+        if (originalResolveModuleNames) {
+          const resolved = originalResolveModuleNames.call(
+            host,
+            [moduleName],
+            containingFile,
+            reusedNames,
+            redirectedReference,
+            options
+          );
+          return resolved[0];
+        } else {
+          // Если originalResolveModuleNames отсутствует, используем стандартное разрешение TypeScript
+          const result = ts.resolveModuleName(
+            moduleName,
+            containingFile,
+            options,
+            ts.sys
+          );
+          return result.resolvedModule;
+        }
+      }
+
+      // Для внешних модулей проверяем, есть ли наша заглушка модуля
       const stubPath = path.join(
         tempProject.tempDir.name,
         "node_modules",
@@ -35,7 +59,7 @@ function createCustomCompilerHost(compilerOptions, tempProject) {
         };
       }
 
-      // Используем стандартное разрешение
+      // Используем стандартное разрешение для остальных случаев
       if (originalResolveModuleNames) {
         const resolved = originalResolveModuleNames.call(
           host,
