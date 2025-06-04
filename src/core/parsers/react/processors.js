@@ -39,6 +39,16 @@ function processFunctionalComponent(path, code, result) {
   const componentName = path.node.id.name;
   const initNode = path.node.init;
 
+  // Извлекаем typeSignature из аннотации типа переменной
+  let typeSignature = null;
+  if (
+    path.node.id.typeAnnotation &&
+    path.node.id.typeAnnotation.typeAnnotation
+  ) {
+    // Используем функцию getNodeText для получения строкового представления типа
+    typeSignature = getNodeText(path.node.id.typeAnnotation.typeAnnotation);
+  }
+
   // Получаем информацию о параметрах (пропсах)
   const props = [];
   if (initNode.params && initNode.params.length > 0) {
@@ -102,6 +112,7 @@ function processFunctionalComponent(path, code, result) {
     returnType: returnType,
     body: normalizeLineEndings(bodyText),
     isExported: getCommonModifiers(path.node, path).isExported,
+    typeSignature: typeSignature,
   };
 
   // Добавляем компонент в результаты
@@ -119,6 +130,7 @@ function processFunctionalComponent(path, code, result) {
     returnType: returnType,
     jsx: true,
     body: component.body,
+    typeSignature: typeSignature,
   };
 
   // Если компонент экспортируется, добавляем его в exports
@@ -432,6 +444,66 @@ function normalizeLineEndings(text) {
   return text.replace(/\r?\n/g, "\r\n");
 }
 
+/**
+ * Получает текстовое представление узла AST (вспомогательная функция)
+ * @param {Object} node - узел AST
+ * @returns {string} текстовое представление
+ */
+function getNodeText(node) {
+  if (!node) return "";
+
+  // Простые типы
+  if (node.type === "TSStringKeyword") return "string";
+  if (node.type === "TSNumberKeyword") return "number";
+  if (node.type === "TSBooleanKeyword") return "boolean";
+  if (node.type === "TSAnyKeyword") return "any";
+
+  // TSTypeReference - для сложных типов как FunctionComponent
+  if (node.type === "TSTypeReference" && node.typeName) {
+    let baseType = "";
+    if (node.typeName.type === "Identifier") {
+      baseType = node.typeName.name;
+    } else if (node.typeName.type === "TSQualifiedName") {
+      // Обрабатываем React.FunctionComponent
+      baseType = getQualifiedName(node.typeName);
+    }
+
+    // Добавляем дженерики если есть
+    if (
+      node.typeParameters &&
+      node.typeParameters.params &&
+      node.typeParameters.params.length > 0
+    ) {
+      const generics = node.typeParameters.params
+        .map((param) => getNodeText(param))
+        .join(", ");
+      return `${baseType}<${generics}>`;
+    }
+
+    return baseType;
+  }
+
+  // Для других типов возвращаем fallback
+  return node.name || "unknown";
+}
+
+/**
+ * Получает квалифицированное имя (например, React.FunctionComponent)
+ * @param {Object} node - узел TSQualifiedName
+ * @returns {string} квалифицированное имя
+ */
+function getQualifiedName(node) {
+  if (node.type === "Identifier") {
+    return node.name;
+  }
+  if (node.type === "TSQualifiedName") {
+    const left = getQualifiedName(node.left);
+    const right = node.right.name;
+    return `${left}.${right}`;
+  }
+  return "unknown";
+}
+
 module.exports = {
   processFunctionalComponent,
   processFunctionDeclarationComponent,
@@ -441,4 +513,6 @@ module.exports = {
   getClassComponentState,
   getReturnStatement,
   normalizeLineEndings,
+  getNodeText,
+  getQualifiedName,
 };

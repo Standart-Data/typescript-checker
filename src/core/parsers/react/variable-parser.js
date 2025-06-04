@@ -163,11 +163,62 @@ function getNodeText(node) {
     return `${elementType}[]`;
   }
 
+  // Обработка функциональных типов
+  if (node.type === "TSFunctionType") {
+    const params = node.parameters
+      ? node.parameters
+          .map((param) => {
+            const paramName = param.name ? param.name : "";
+            const paramType = param.typeAnnotation
+              ? getNodeText(param.typeAnnotation.typeAnnotation)
+              : "any";
+            return `${paramName}: ${paramType}`;
+          })
+          .join(", ")
+      : "";
+    const returnType = node.typeAnnotation
+      ? getNodeText(node.typeAnnotation.typeAnnotation)
+      : "void";
+    return `(${params}) => ${returnType}`;
+  }
+
+  // Обработка объектных типов (литералов)
+  if (node.type === "TSTypeLiteral") {
+    const members = node.members
+      ? node.members
+          .map((member) => {
+            if (member.type === "TSPropertySignature") {
+              const memberName = member.key ? member.key.name : "";
+              const isOptional =
+                member.optional || member.questionToken ? "?" : "";
+              const memberType = member.typeAnnotation
+                ? getNodeText(member.typeAnnotation.typeAnnotation)
+                : "any";
+              return `${memberName}${isOptional}: ${memberType}`;
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join("; ")
+      : "";
+    return `{ ${members} }`;
+  }
+
   if (node.type === "TSTypeReference" && node.typeName) {
     // Специальная обработка для const
     if (node.typeName.type === "Identifier" && node.typeName.name === "const") {
       return "const";
     }
+
+    // Обработка generics (например, FunctionComponent<Props>)
+    if (node.typeParameters && node.typeParameters.params) {
+      const baseType = node.typeName.name || "unknown";
+      const typeParams = node.typeParameters.params
+        .map((param) => getNodeText(param))
+        .join(", ");
+      return `${baseType}<${typeParams}>`;
+    }
+
     return node.typeName.name || "unknown";
   }
 
@@ -214,8 +265,11 @@ function parseSimpleVariableStatement(
 
   // Получаем тип переменной
   let varType = "unknown";
+  let typeSignature = null; // Новое поле для полной сигнатуры типа
+
   if (node.id.typeAnnotation && node.id.typeAnnotation.typeAnnotation) {
     varType = getTSType(node.id.typeAnnotation.typeAnnotation);
+    typeSignature = getNodeText(node.id.typeAnnotation.typeAnnotation);
   } else if (node.init) {
     varType = getType(node.init);
   }
@@ -241,19 +295,223 @@ function parseSimpleVariableStatement(
   // Определяем тип декларации (const, let, var)
   const declarationType = path.parent.kind || "var";
 
-  context.variables[varName] = {
+  // Проверяем, является ли это функциональным компонентом
+  const isFunctionComponent =
+    node.init &&
+    (node.init.type === "ArrowFunctionExpression" ||
+      node.init.type === "FunctionExpression") &&
+    typeSignature &&
+    (typeSignature.includes("FunctionComponent") ||
+      typeSignature.includes("FC"));
+
+  const variableData = {
     name: varName,
     type: varType,
+    typeSignature: typeSignature, // Добавляем typeSignature
     isConst: declarationType === "const",
     declarationType: declarationType,
     hasInitializer: !!node.init,
     initializerValue: node.init ? node.init.toString() : undefined,
-    typeAssertion: typeAssertion, // Новое поле для type assertion
+    typeAssertion: typeAssertion,
     isExported: modifiers.isExported,
     isDeclared: modifiers.isDeclared,
     // Поля для обратной совместимости со старыми тестами
     types: [varType], // старые тесты ожидают массив типов
     value: parsedValue, // теперь может быть объектом или строкой
+  };
+
+  // Если это функциональный компонент, добавляем дополнительные поля и дублируем в functions
+  if (isFunctionComponent) {
+    // Извлекаем информацию о параметрах функции
+    const functionParams = [];
+    if (node.init.params) {
+      node.init.params.forEach((param) => {
+        if (param.type === "ObjectPattern") {
+          // Деструктуризация параметров
+          param.properties.forEach((prop) => {
+            if (
+              prop.type === "ObjectProperty" &&
+              prop.key &&
+              prop.key.type === "Identifier"
+            ) {
+              functionParams.push({
+                name: prop.key.name,
+                type: "any", // В деструктуризации тип обычно выводится
+              });
+            }
+          });
+        } else if (param.type === "Identifier") {
+          functionParams.push({
+            name: param.name,
+            type: param.typeAnnotation
+              ? getTSType(param.typeAnnotation.typeAnnotation)
+              : "any",
+          });
+        }
+      });
+    }
+
+    // Извлекаем JSX контент
+    let jsxContent = "";
+    if (node.init.body) {
+      jsxContent = getNodeText(node.init.body);
+    }
+
+    variableData.jsx = true;
+    variableData.params = functionParams;
+    variableData.parameters = functionParams;
+    variableData.returnType = "JSX.Element";
+    variableData.returnResult = ["JSX.Element"];
+    variableData.body = jsxContent;
+
+    // Дублируем в functions для совместимости с тестами, которые ищут компоненты там
+    context.functions[varName] = {
+      name: varName,
+      params: functionParams.map((p) => ({ ...p, type: [p.type] })), // Старый формат с type как массивом
+      parameters: functionParams,
+      returnType: "JSX.Element",
+      returnResult: ["JSX.Element"],
+      jsx: true,
+      body: jsxContent,
+      typeSignature: typeSignature,
+      types: functionParams.map((p) => p.type).concat(["JSX.Element"]),
+    };
+  }
+
+  context.variables[varName] = variableData;
+
+  // Проверяем, является ли переменная функцией, и дублируем её в functions (аналогично TypeScript парсеру)
+  if (isVariableFunction(node)) {
+    const functionObject = createFunctionFromVariable(node, typeSignature);
+    context.functions[varName] = functionObject;
+  }
+}
+
+/**
+ * Проверяет, является ли переменная функцией
+ * @param {Object} node - узел VariableDeclarator
+ * @returns {boolean} true, если переменная является функцией
+ */
+function isVariableFunction(node) {
+  // Проверяем по инициализатору
+  if (node.init) {
+    // Стрелочная функция или function expression - точно функции
+    if (
+      node.init.type === "ArrowFunctionExpression" ||
+      node.init.type === "FunctionExpression"
+    ) {
+      return true;
+    }
+  }
+
+  // Проверяем по аннотации типа
+  if (node.id.typeAnnotation && node.id.typeAnnotation.typeAnnotation) {
+    const typeNode = node.id.typeAnnotation.typeAnnotation;
+    // Функциональные типы
+    if (typeNode.type === "TSFunctionType") {
+      return true;
+    }
+
+    // Типы-ссылки на функциональные типы
+    if (typeNode.type === "TSTypeReference") {
+      // Простая проверка по тексту типа
+      const typeString = getNodeText(typeNode);
+      if (
+        typeString.includes("=>") &&
+        (typeString.startsWith("(") || typeString.includes(") =>"))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Создает объект функции из переменной-функции
+ * @param {Object} node - узел VariableDeclarator
+ * @param {string} typeSignature - сигнатура типа
+ * @returns {Object} объект функции
+ */
+function createFunctionFromVariable(node, typeSignature) {
+  const varName = node.id.name;
+
+  // Парсим параметры и возвращаемый тип из типа или инициализатора
+  let parameters = [];
+  let returnType = "unknown";
+
+  if (
+    node.init &&
+    (node.init.type === "ArrowFunctionExpression" ||
+      node.init.type === "FunctionExpression")
+  ) {
+    // Если есть стрелочная функция или function expression
+    const func = node.init;
+
+    // Парсим параметры
+    parameters = func.params.map((param) => ({
+      name: param.name || "",
+      type: param.typeAnnotation
+        ? getTSType(param.typeAnnotation.typeAnnotation)
+        : "any",
+      optional: false, // В Babel AST optional обычно не так просто определить
+    }));
+
+    // Возвращаемый тип
+    if (func.returnType) {
+      returnType = getTSType(func.returnType.typeAnnotation);
+    } else {
+      // Определяем по содержимому, если это JSX - то JSX.Element
+      if (func.body && getNodeText(func.body).includes("React.createElement")) {
+        returnType = "JSX.Element";
+      } else {
+        returnType = "any";
+      }
+    }
+  } else if (node.id.typeAnnotation && node.id.typeAnnotation.typeAnnotation) {
+    // Если переменная имеет функциональный тип
+    const typeNode = node.id.typeAnnotation.typeAnnotation;
+    if (typeNode.type === "TSFunctionType") {
+      // Парсим параметры из типа функции
+      parameters = typeNode.parameters
+        ? typeNode.parameters.map((param) => {
+            const paramName = param.name ? param.name.name || param.name : "";
+            const paramType = param.typeAnnotation
+              ? getNodeText(param.typeAnnotation.typeAnnotation)
+              : "any";
+            return {
+              name: paramName,
+              type: paramType,
+              optional: false,
+            };
+          })
+        : [];
+
+      // Возвращаемый тип
+      if (typeNode.typeAnnotation) {
+        returnType = getNodeText(typeNode.typeAnnotation.typeAnnotation);
+      }
+    }
+  }
+
+  return {
+    name: varName,
+    parameters: parameters,
+    returnType: returnType,
+    isAsync: false,
+    isGenerator: false,
+    isExported: false, // TODO: определить из модификаторов
+    isDeclared: false,
+    jsx: false, // Для обычных функций
+    // Поля для обратной совместимости
+    types: parameters.map((p) => p.type).concat([returnType]),
+    params: parameters.map((p) => ({
+      name: p.name,
+      type: [p.type], // type как массив для совместимости
+    })),
+    returnResult: [returnType],
+    typeSignature: typeSignature,
   };
 }
 

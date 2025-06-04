@@ -44,6 +44,7 @@ function parseSimpleInterfaceDeclaration(
 
   // Парсим свойства интерфейса
   const properties = {};
+  const propertyDetails = []; // Новый массив для детальной информации о свойствах
   const methods = {};
 
   if (node.body && node.body.body) {
@@ -57,7 +58,20 @@ function parseSimpleInterfaceDeclaration(
           propertyType = getTSType(member.typeAnnotation.typeAnnotation);
         }
 
+        const isOptional = member.optional === true;
+
+        // Сохраняем в старом формате для обратной совместимости
         properties[propertyName] = propertyType;
+
+        // Сохраняем детальную информацию
+        propertyDetails.push({
+          name: propertyName,
+          type: propertyType,
+          optional: isOptional,
+          typeString: isOptional
+            ? `${propertyName}?: ${propertyType}`
+            : `${propertyName}: ${propertyType}`,
+        });
       } else if (member.type === "TSMethodSignature") {
         // Метод интерфейса
         const methodName = member.key.name || member.key.value || "unknown";
@@ -136,7 +150,8 @@ function parseSimpleInterfaceDeclaration(
   context.interfaces[typeName] = {
     name: typeName,
     extendsInterfaces: extendsInterfaces,
-    properties: properties,
+    properties: properties, // Старый формат для обратной совместимости
+    propertyDetails: propertyDetails, // Новый детальный формат
     methods: methods,
     isExported: modifiers.isExported,
     isDeclared: modifiers.isDeclared,

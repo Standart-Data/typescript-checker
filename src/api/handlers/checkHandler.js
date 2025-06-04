@@ -46,6 +46,17 @@ function validateRequest(requestBody) {
 }
 
 /**
+ * Проверяет содержит ли файл импорты
+ * @param {string} content - содержимое файла
+ * @returns {boolean} true если файл содержит импорты
+ */
+function hasImports(content) {
+  const importRegex = /^\s*import\s+.*?from\s+['"`].*?['"`]\s*;?/gm;
+  const requireRegex = /require\s*\(\s*['"`].*?['"`]\s*\)/g;
+  return importRegex.test(content) || requireRegex.test(content);
+}
+
+/**
  * Основная функция обработки запроса
  * @param {Object} requestBody - тело запроса с файлами
  * @returns {Object} результат обработки
@@ -70,10 +81,26 @@ function handleCheckRequest(requestBody) {
 
     // 2. Определяем путь обработки
     if (files.length === 1) {
-      // Один файл -> fileService (для обратной совместимости)
       const [filename] = files;
       const content = requestBody[filename];
 
+      // Если файл содержит импорты, используем multiFileService
+      if (hasImports(content)) {
+        const processResult = processMultipleFiles(requestBody);
+        const metadata = extractMetadata(requestBody);
+
+        return {
+          success: true,
+          statusCode: 200,
+          response: {
+            errors: processResult.allErrors,
+            result: processResult.compiledFiles,
+            metadata: metadata,
+          },
+        };
+      }
+
+      // Иначе используем старый метод для файлов без импортов
       const processResult = processFile(filename, content);
       const metadata = extractMetadata(requestBody);
 
@@ -124,4 +151,5 @@ function handleCheckRequest(requestBody) {
 module.exports = {
   validateRequest,
   handleCheckRequest,
+  hasImports,
 };

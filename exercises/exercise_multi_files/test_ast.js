@@ -1,35 +1,13 @@
 // Импорты для тестирования
-const { parseTypeScript, parseReact, getParser } = require("../../src");
+const { checkFiles } = require("../../testUtils");
 const assert = require("assert");
 const path = require("path");
 
-// Используем абсолютные пути для файлов
-const APP_TS_PATH = path.join(__dirname, "app.ts");
-const TYPES_DTS_PATH = path.join(__dirname, "types.d.ts");
-const COMPONENTS_TSX_PATH = path.join(__dirname, "components.tsx");
-
-// Создаем объект allVariables для хранения результатов парсинга нескольких файлов
-const allVariables = {
-  files: {},
-};
-
-const appTsMetadata = parseTypeScript([APP_TS_PATH]);
-allVariables.files["app.ts"] = appTsMetadata;
-
-const typesDtsMetadata = parseTypeScript([TYPES_DTS_PATH]); // Используем parseTypeScript для .d.ts
-allVariables.files["types.d.ts"] = typesDtsMetadata;
-
-const tsxParser = getParser("tsx");
-const componentsTsxMetadata = tsxParser([COMPONENTS_TSX_PATH]);
-allVariables.files["components.tsx"] = componentsTsxMetadata;
-
-Object.keys(appTsMetadata).forEach((key) => {
-  if (key !== "files") {
-    allVariables[key] = appTsMetadata[key];
-  }
-});
-
-console.log(JSON.stringify(allVariables, null, 2));
+const { result: resultFiles, metadata: allVariables } = checkFiles([
+  "app.ts",
+  "types.d.ts",
+  "components.tsx",
+]);
 
 describe("Тестирование разных типов TypeScript файлов", function () {
   it("Проверка структуры в app.ts", function () {

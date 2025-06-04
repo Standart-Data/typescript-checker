@@ -38,24 +38,34 @@ function parseSimpleInterfaceDeclaration(
       isModuleMember
     );
 
-    context.interfaces[interfaceName] = {
-      name: interfaceName,
-      properties: {},
-      methods: {},
-      isExported: modifiers.isExported,
-      isDeclared: modifiers.isDeclared,
-      extends: extendedTypes.length > 0 ? extendedTypes : undefined,
-      extendedBy: extendedTypes.length > 0 ? extendedTypes : undefined,
-    };
+    // Парсим свойства интерфейса
+    const properties = {};
+    const propertyDetails = []; // Новый массив для детальной информации о свойствах
+    const methods = {};
 
     node.members?.forEach((member) => {
       const memberName = member.name?.getText();
       if (!memberName) return;
 
       if (ts.isPropertySignature(member)) {
-        context.interfaces[interfaceName].properties[memberName] = member.type
+        const propertyType = member.type
           ? checker.typeToString(checker.getTypeAtLocation(member.type))
           : "any";
+
+        const isOptional = !!member.questionToken;
+
+        // Сохраняем в старом формате для обратной совместимости
+        properties[memberName] = propertyType;
+
+        // Сохраняем детальную информацию
+        propertyDetails.push({
+          name: memberName,
+          type: propertyType,
+          optional: isOptional,
+          typeString: isOptional
+            ? `${memberName}?: ${propertyType}`
+            : `${memberName}: ${propertyType}`,
+        });
       } else if (ts.isMethodSignature(member)) {
         const methodSignature = checker.getSignatureFromDeclaration(member);
         const interfaceMethodParams =
@@ -72,7 +82,7 @@ function parseSimpleInterfaceDeclaration(
           ? checker.typeToString(methodSignature.getReturnType())
           : "any";
 
-        context.interfaces[interfaceName].methods[memberName] = {
+        methods[memberName] = {
           name: memberName,
           parameters: interfaceMethodParams.map((p) => ({
             // Новый формат для parameters
@@ -86,6 +96,17 @@ function parseSimpleInterfaceDeclaration(
         };
       }
     });
+
+    context.interfaces[interfaceName] = {
+      name: interfaceName,
+      properties: properties, // Старый формат для обратной совместимости
+      propertyDetails: propertyDetails, // Новый детальный формат
+      methods: methods,
+      isExported: modifiers.isExported,
+      isDeclared: modifiers.isDeclared,
+      extends: extendedTypes.length > 0 ? extendedTypes : undefined,
+      extendedBy: extendedTypes.length > 0 ? extendedTypes : undefined,
+    };
   }
 }
 

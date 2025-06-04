@@ -299,6 +299,14 @@ function parseSimpleVariableStatement(
       const varName = declaration.name.text;
       const varType = getVariableType(declaration, checker);
 
+      // Извлекаем typeSignature из аннотации типа переменной
+      let typeSignature = null;
+      if (declaration.type) {
+        typeSignature = checker.typeToString(
+          checker.getTypeAtLocation(declaration.type)
+        );
+      }
+
       // Анализируем type assertion
       const typeAssertion = analyzeTypeAssertion(
         declaration.initializer,
@@ -317,29 +325,111 @@ function parseSimpleVariableStatement(
         }
       }
 
-      context.variables[varName] = {
+      // Определяем тип декларации (const, let, var)
+      const declarationType = getDeclarationType(node);
+
+      // Проверяем, является ли это функциональным компонентом (для аналогии с React парсером)
+      const isFunctionComponent =
+        declaration.initializer &&
+        (ts.isArrowFunction(declaration.initializer) ||
+          ts.isFunctionExpression(declaration.initializer)) &&
+        typeSignature &&
+        (typeSignature.includes("FunctionComponent") ||
+          typeSignature.includes("FC"));
+
+      const variableData = {
         name: varName,
         type: varType,
+        typeSignature: typeSignature, // Добавляем typeSignature
         isConst: isConstVariable(node),
-        declarationType: getDeclarationType(node),
+        declarationType: declarationType,
         hasInitializer: !!declaration.initializer,
         initializerValue: declaration.initializer?.getText(),
-        typeAssertion: typeAssertion, // Новое поле для type assertion
+        typeAssertion: typeAssertion,
         isExported: modifiers.isExported,
         isDeclared: modifiers.isDeclared,
         // Поля для обратной совместимости со старыми тестами
         types: [varType], // старые тесты ожидают массив типов
         value: parsedValue, // теперь может быть объектом или строкой
-        // TODO: decorators on variable/property might need special handling if they exist
       };
 
-      // Проверяем, является ли переменная функцией, и дублируем её в functions
+      // Если это функциональный компонент, добавляем дополнительные поля и дублируем в functions
+      if (isFunctionComponent) {
+        // Извлекаем информацию о параметрах функции
+        const functionParams = [];
+        const func = declaration.initializer;
+
+        if (func.parameters) {
+          func.parameters.forEach((param) => {
+            if (ts.isObjectBindingPattern(param.name)) {
+              // Деструктуризация параметров
+              param.name.elements.forEach((element) => {
+                if (
+                  ts.isBindingElement(element) &&
+                  element.name &&
+                  ts.isIdentifier(element.name)
+                ) {
+                  functionParams.push({
+                    name: element.name.text,
+                    type: element.type
+                      ? checker.typeToString(
+                          checker.getTypeAtLocation(element.type)
+                        )
+                      : "any",
+                  });
+                }
+              });
+            } else if (ts.isIdentifier(param.name)) {
+              functionParams.push({
+                name: param.name.text,
+                type: param.type
+                  ? checker.typeToString(checker.getTypeAtLocation(param.type))
+                  : "any",
+              });
+            }
+          });
+        }
+
+        // Извлекаем JSX контент
+        let jsxContent = "";
+        if (func.body) {
+          jsxContent = func.body.getText();
+        }
+
+        variableData.jsx = true;
+        variableData.params = functionParams;
+        variableData.parameters = functionParams;
+        variableData.returnType = "JSX.Element";
+        variableData.returnResult = ["JSX.Element"];
+        variableData.body = jsxContent;
+
+        // Дублируем в functions для совместимости с тестами, которые ищут компоненты там
+        context.functions[varName] = {
+          name: varName,
+          params: functionParams.map((p) => ({ ...p, type: [p.type] })), // Старый формат с type как массивом
+          parameters: functionParams,
+          returnType: "JSX.Element",
+          returnResult: ["JSX.Element"],
+          jsx: true,
+          body: jsxContent,
+          typeSignature: typeSignature,
+          types: functionParams.map((p) => p.type).concat(["JSX.Element"]),
+        };
+      }
+
+      context.variables[varName] = variableData;
+
+      // Проверяем, является ли переменная функцией, и дублируем её в functions (старая логика)
       if (isVariableFunction(declaration, checker)) {
         const functionObject = createFunctionFromVariable(
           declaration,
           checker,
           modifiers
         );
+
+        // Добавляем typeSignature в функцию тоже
+        functionObject.typeSignature = typeSignature;
+
         context.functions[varName] = functionObject;
 
         // Дополняем переменную специфическими полями для функций
