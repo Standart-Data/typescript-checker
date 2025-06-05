@@ -1,5 +1,4 @@
 module.exports = `// Type definitions for reflect-metadata
-import "reflect-metadata";
 
 declare global {
   namespace Reflect {
@@ -22,5 +21,4 @@ declare global {
   }
 }
 
-export = {}; 
 export {};`;

@@ -24,11 +24,12 @@ function checkFiles(fileNames, baseDir = process.cwd()) {
   // Получаем данные как из UI тренажера
   const metadata = checkResult.response.metadata;
   const result = checkResult.response.result;
+  const errors = checkResult.response.errors;
 
   // Выводим metadata в консоль
   console.log(JSON.stringify(metadata, null, 2));
 
-  return { result, metadata };
+  return { result, metadata, errors };
 }
 
 module.exports = {

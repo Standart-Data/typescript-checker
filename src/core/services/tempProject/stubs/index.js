@@ -8,11 +8,9 @@ const stubsMap = {
   "react-dom": require("./react-dom"),
   "react-hook-form": require("./react-hook-form"),
   "reflect-metadata": require("./reflect-metadata"),
-  express: require("./express"),
   lodash: require("./lodash"),
-  moment: require("./moment"),
   axios: require("./axios"),
-  uuid: require("./uuid"),
+  classnames: require("./classnames"),
 };
 
 function getStub(moduleName) {
