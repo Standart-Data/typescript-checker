@@ -52,8 +52,13 @@ function validateRequest(requestBody) {
  */
 function hasImports(content) {
   const importRegex = /^\s*import\s+.*?from\s+['"`].*?['"`]\s*;?/gm;
+  const sideEffectImportRegex = /^\s*import\s+['"`].*?['"`]\s*;?/gm;
   const requireRegex = /require\s*\(\s*['"`].*?['"`]\s*\)/g;
-  return importRegex.test(content) || requireRegex.test(content);
+  return (
+    importRegex.test(content) ||
+    sideEffectImportRegex.test(content) ||
+    requireRegex.test(content)
+  );
 }
 
 /**

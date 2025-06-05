@@ -288,26 +288,7 @@ export interface ReactChildren {
 
 export const Children: ReactChildren;
 
-// JSX namespace
-declare global {
-  namespace JSX {
-    interface Element extends ReactElement<any, any> { }
-    interface ElementClass extends Component<any> {
-      render(): ReactNode;
-    }
-    interface ElementAttributesProperty { props: {}; }
-    interface ElementChildrenAttribute { children: {}; }
-
-    interface IntrinsicAttributes extends Attributes { }
-    interface IntrinsicClassAttributes<T> extends Attributes {
-      ref?: Ref<T>;
-    }
-
-    interface IntrinsicElements {
-      [elemName: string]: any;
-    }
-  }
-}
+// JSX namespace - handled automatically by global modules system
 
 // Version
 export const version: string;

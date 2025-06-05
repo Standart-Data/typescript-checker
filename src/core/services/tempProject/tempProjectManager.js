@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { getFileExtension } = require("../utils/fileExtensions");
 const { createModuleStubs } = require("./moduleStubs");
+const { createGlobalTypesContent } = require("./globalTypesProvider");
 
 /**
  * Создает конфигурацию TypeScript для временного проекта
@@ -65,32 +66,17 @@ function createPackageJson() {
 }
 
 /**
- * Создает глобальные типы из .d.ts файлов
+ * Создает глобальные типы из .d.ts файлов и обнаруженных side-effect импортов
  * @param {Object} files - файлы проекта
  * @param {string} tempDirPath - путь к временной директории
  * @returns {string|null} путь к файлу глобальных типов или null
  */
 function createGlobalTypes(files, tempDirPath) {
-  const globalDeclarations = [];
+  const globalTypesContent = createGlobalTypesContent(files);
 
-  Object.entries(files).forEach(([filename, content]) => {
-    const extension = getFileExtension(filename);
-    if (extension === "d.ts") {
-      // Извлекаем глобальные декларации из .d.ts файлов
-      const globalMatch = content.match(/declare global\s*\{([^}]+)\}/s);
-      if (globalMatch) {
-        globalDeclarations.push(globalMatch[1].trim());
-      }
-    }
-  });
-
-  // Создаем единый файл глобальных типов
-  if (globalDeclarations.length > 0) {
-    const globalTypes = `declare global {\n  ${globalDeclarations.join(
-      "\n  "
-    )}\n}\n\nexport {};`;
+  if (globalTypesContent) {
     const globalTypesPath = path.join(tempDirPath, "global.d.ts");
-    fs.writeFileSync(globalTypesPath, globalTypes);
+    fs.writeFileSync(globalTypesPath, globalTypesContent);
     return globalTypesPath;
   }
 

@@ -29,6 +29,11 @@ function checkFiles(fileNames, baseDir = process.cwd()) {
   // Выводим metadata в консоль
   console.log(JSON.stringify(metadata, null, 2));
 
+  if (errors.length > 0) {
+    console.log("🚨 Errors:");
+    console.log(JSON.stringify(errors, null, 2));
+  }
+
   return { result, metadata, errors };
 }
 
