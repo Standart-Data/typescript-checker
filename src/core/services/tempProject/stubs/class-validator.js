@@ -16,6 +16,10 @@ export interface ValidationOptions {
   forbidUnknownValues?: boolean;
   stopAtFirstError?: boolean;
   strictGroups?: boolean;
+  message?: string | ((validationArguments: any) => string);
+  each?: boolean;
+  always?: boolean;
+  context?: any;
 }
 
 // Validation error
