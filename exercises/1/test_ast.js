@@ -43,9 +43,10 @@ describe("Строгая декларация EmployeeCard.module.css", function
       "Тип должен содержать поле highlightName"
     );
     assert.ok(stylesType.includes("string"), "Поля должны быть типа string");
+
     assert.ok(
-      cssModule.variables.styles.isExported,
-      "styles должен быть экспортирован"
+      cssModule.exports && cssModule.exports.default,
+      "Модуль должен иметь default экспорт"
     );
   });
 

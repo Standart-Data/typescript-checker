@@ -24,6 +24,32 @@ function parseModuleContents(node, checker, allVariables, isDeclared, parsers) {
 
   if (node.body && ts.isModuleBlock(node.body)) {
     node.body.statements.forEach((statement) => {
+      // Проверяем экспорты модуля
+      if (ts.isExportAssignment(statement)) {
+        // export default ...
+        if (statement.isExportEquals) {
+          // export = ...
+          moduleData.exports.exportEquals = statement.expression.getText();
+        } else {
+          // export default ...
+          moduleData.exports.default = statement.expression.getText();
+        }
+      } else if (ts.isExportDeclaration(statement)) {
+        // export { ... } from '...'
+        if (
+          statement.exportClause &&
+          ts.isNamedExports(statement.exportClause)
+        ) {
+          if (!moduleData.exports.named) moduleData.exports.named = [];
+          statement.exportClause.elements.forEach((specifier) => {
+            moduleData.exports.named.push({
+              name: specifier.name.text,
+              alias: specifier.propertyName?.text,
+            });
+          });
+        }
+      }
+
       // Используем обновленные parseSimple... функции, передавая им moduleData и checker
       if (ts.isFunctionDeclaration(statement)) {
         parsers.parseSimpleFunctionDeclaration(
