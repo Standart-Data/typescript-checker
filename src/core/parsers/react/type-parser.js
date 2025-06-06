@@ -28,16 +28,13 @@ function parseObjectType(typeNode) {
               value: parseObjectType(member.typeAnnotation.typeAnnotation),
             };
           } else {
-            propType = getTSType(member.typeAnnotation);
+            propType = getTSType(member.typeAnnotation.typeAnnotation);
           }
         }
 
-        result[propName] = {
-          type: typeof propType === "object" ? propType.type : "primitive",
-          value: typeof propType === "object" ? propType.value : propType,
-          isOptional: member.optional || false,
-          isReadonly: member.readonly || false,
-        };
+        // Для совместимости с TypeScript парсером возвращаем простой формат {propName: propType}
+        result[propName] =
+          typeof propType === "object" ? propType.value : propType;
       }
     });
   }
@@ -328,9 +325,15 @@ function parseSimpleTypeAliasDeclaration(
         typeInfo.value = typeNodeToString(node.typeAnnotation);
       } else {
         parsedValue = parseObjectType(node.typeAnnotation);
-        typeDefinition = parsedValue ? "object" : "unknown";
-        typeInfo.type = typeDefinition;
-        typeInfo.value = typeDefinition;
+        if (parsedValue && Object.keys(parsedValue).length > 0) {
+          typeInfo.type = "object";
+          typeInfo.value = "object";
+          typeInfo.properties = parsedValue;
+        } else {
+          typeDefinition = parsedValue ? "object" : "unknown";
+          typeInfo.type = typeDefinition;
+          typeInfo.value = typeDefinition;
+        }
       }
     } else if (node.typeAnnotation.type === "TSUnionType") {
       // Union тип (A | B | C) - делаем как combined с possibleTypes

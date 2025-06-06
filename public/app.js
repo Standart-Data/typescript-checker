@@ -327,10 +327,23 @@ class App {
       if (allVariables.files && Object.keys(allVariables.files).length > 0) {
         // Новый формат: структура уже готова
         filesStructure = allVariables.files;
+        // Сначала пытаемся найти файл с TypeScript метаданными
+        const mainFileWithTypes = Object.values(filesStructure).find(
+          (file) =>
+            file &&
+            (file.types ||
+              file.functions ||
+              file.variables ||
+              file.interfaces ||
+              file.classes)
+        );
+
         testVariables =
           filesStructure["index.ts"] ||
           filesStructure["main.ts"] ||
           filesStructure["app.ts"] ||
+          filesStructure[fileName] ||
+          mainFileWithTypes ||
           Object.values(filesStructure)[0] ||
           allVariables;
       } else {
@@ -361,10 +374,22 @@ class App {
             }
           });
 
+          // Сначала пытаемся найти файл с TypeScript метаданными
+          const fileWithTypes = Object.values(filesStructure).find(
+            (file) =>
+              file &&
+              (file.types ||
+                file.functions ||
+                file.variables ||
+                file.interfaces ||
+                file.classes)
+          );
+
           testVariables =
             filesStructure[fileName] ||
             filesStructure["main.ts"] ||
             filesStructure["app.ts"] ||
+            fileWithTypes ||
             Object.values(filesStructure)[0] ||
             allVariables;
         }
