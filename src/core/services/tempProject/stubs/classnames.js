@@ -1,14 +1,13 @@
 module.exports = `// Type definitions for classnames
 
-export type Value = string | number | boolean | undefined | null;
-export type Mapping = Record<string, any>;
-export interface ArgumentArray extends Array<Argument> {}
-export type Argument = Value | Mapping | ArgumentArray;
+declare type ClassValue = string | number | ClassDictionary | ClassArray | undefined | null | boolean;
 
-export interface ClassNamesFn {
-  (...args: ArgumentArray): string;
+declare interface ClassDictionary {
+  [id: string]: any;
 }
 
-declare const classNames: ClassNamesFn;
+declare interface ClassArray extends Array<ClassValue> { }
+
+declare function classNames(...classes: ClassValue[]): string;
 
 export default classNames;`;

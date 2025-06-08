@@ -128,6 +128,13 @@ function getNodeText(node) {
   if (node.type === "BooleanLiteral") return node.value.toString();
   if (node.type === "Identifier") return node.name;
 
+  // Обработка вызовов функций
+  if (node.type === "CallExpression") {
+    const callee = getNodeText(node.callee);
+    const args = node.arguments.map((arg) => getNodeText(arg)).join(", ");
+    return `${callee}(${args})`;
+  }
+
   // Для объектов и массивов возвращаем упрощенное представление
   if (node.type === "ObjectExpression") {
     const props = node.properties
@@ -287,8 +294,8 @@ function parseSimpleVariableStatement(
     } else if (t.isBooleanLiteral(node.init)) {
       parsedValue = node.init.value.toString();
     } else {
-      // Для не-объектов используем текстовое представление
-      parsedValue = node.init.toString();
+      // Для не-объектов используем getNodeText для правильного представления
+      parsedValue = getNodeText(node.init);
     }
   }
 
@@ -311,7 +318,7 @@ function parseSimpleVariableStatement(
     isConst: declarationType === "const",
     declarationType: declarationType,
     hasInitializer: !!node.init,
-    initializerValue: node.init ? node.init.toString() : undefined,
+    initializerValue: node.init ? getNodeText(node.init) : undefined,
     typeAssertion: typeAssertion,
     isExported: modifiers.isExported,
     isDeclared: modifiers.isDeclared,

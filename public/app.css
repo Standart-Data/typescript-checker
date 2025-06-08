@@ -193,3 +193,24 @@ details {
     height: 100%;
 }
 
+.exercise_description ol {
+    padding-left: 1.5em;
+    margin: 0;
+    list-style-type: decimal;
+}
+
+.exercise_description ol li {
+    margin: 0.3em 0;
+    line-height: 1.6;
+}
+
+.exercise_description ul {
+    padding-left: 1.5em;
+    margin: 0;
+    list-style-type: disc;
+}
+
+.exercise_description ul li {
+    margin: 0.3em 0;
+    line-height: 1.6;
+}
