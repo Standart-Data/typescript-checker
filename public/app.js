@@ -137,13 +137,15 @@ class App {
           const state = CM.state.EditorState.create({
             doc: initialValue,
             extensions: [
-              CM.basicSetup.basicSetup,
-              // Отключаем автодополнение
-              CM.autocomplete.autocompletion({
-                activateOnTyping: false,
-                override: [],
-              }),
-              // Добавляем только подходящий язык вместо обоих
+              // Добавляем номера строк
+              CM.view.lineNumbers(),
+              // Добавляем основные команды без автодополнения
+              CM.view.keymap.of([
+                ...CM.commands.defaultKeymap,
+                ...CM.commands.historyKeymap,
+              ]),
+              CM.commands.history(),
+              // Добавляем только подходящий язык
               ...(languageExtension ? [languageExtension] : []),
               CM.view.EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
@@ -268,16 +270,40 @@ class App {
       }
     }
 
-    // Для обратной совместимости с однофайловыми заданиями
-    const activeFileName = this.getActiveFileName();
-    const activeFileContent = files[activeFileName] || this.getEditorValues();
+    // Находим главный файл для вывода (приоритет TS файлам)
+    const findMainFile = () => {
+      const fileNames = Object.keys(files);
+      const tsFiles = fileNames.filter(
+        (name) =>
+          name.endsWith(".ts") ||
+          name.endsWith(".tsx") ||
+          name.endsWith(".js") ||
+          name.endsWith(".jsx")
+      );
+
+      if (tsFiles.length > 0) {
+        return (
+          tsFiles.find(
+            (name) =>
+              name.includes("index") ||
+              name.includes("main") ||
+              name.includes("app")
+          ) || tsFiles[0]
+        );
+      }
+
+      return this.getActiveFileName();
+    };
+
+    const mainFileName = findMainFile();
+    const activeFileContent = files[mainFileName] || this.getEditorValues();
 
     console.log("Отправляем файлы на проверку:", files);
 
     await this.task.check(files);
 
-    // Используем активный файл для получения соответствующего JS вывода
-    const outputKey = activeFileName.replace(".ts", ".js");
+    // Используем главный файл для получения соответствующего JS вывода
+    const outputKey = mainFileName.replace(".ts", ".js").replace(".tsx", ".js");
     const responseJS =
       this.task.output[outputKey] || this.task.output["main.js"];
     const srcdoc = `<script>${responseJS}</script>`;
@@ -302,7 +328,7 @@ class App {
 
   async runTests() {
     const allVariables = this.task.metadata;
-    const fileName = this.getActiveFileName();
+    const currentFileName = this.getActiveFileName();
     const domDocument = document.querySelector("#output__iframe");
 
     console.log(allVariables, "allVariables");
@@ -317,6 +343,36 @@ class App {
         editorFiles[fileKey] = editor.state.doc.toString();
       }
     }
+
+    // Находим главный TypeScript файл для тестов независимо от активного таба
+    const findMainTsFile = () => {
+      const fileNames = Object.keys(editorFiles);
+      // Приоритет для TypeScript/JavaScript файлов
+      const tsFiles = fileNames.filter(
+        (name) =>
+          name.endsWith(".ts") ||
+          name.endsWith(".tsx") ||
+          name.endsWith(".js") ||
+          name.endsWith(".jsx")
+      );
+
+      // Если есть TS файлы, используем первый найденный
+      if (tsFiles.length > 0) {
+        return (
+          tsFiles.find(
+            (name) =>
+              name.includes("index") ||
+              name.includes("main") ||
+              name.includes("app")
+          ) || tsFiles[0]
+        );
+      }
+
+      // Fallback на текущий файл
+      return currentFileName;
+    };
+
+    const fileName = findMainTsFile();
 
     // Создание правильной структуры контекста для многофайловых тестов
     if (Object.keys(allVariables).length > 0) {
