@@ -3,6 +3,7 @@ const { getTSType, getTypeFromFCAnnotation, getType } = require("./types");
 const { getCommonModifiers } = require("./common-utils");
 const { getReturnJSXCode } = require("../../../utils/jsxUtils");
 const { getComponentHooks } = require("./hooks");
+const { analyzeJSX } = require("./jsx-analyzer");
 
 /**
  * Находит возвращаемый JSX элемент в функции компонента
@@ -105,6 +106,17 @@ function processFunctionalComponent(path, code, result) {
     bodyText = "/* function body */";
   }
 
+  // Анализируем JSX структуру
+  let jsxAnalysis = null;
+  if (initNode.body) {
+    try {
+      jsxAnalysis = analyzeJSX(initNode.body);
+    } catch (error) {
+      // Если анализ JSX не удался, просто продолжаем без него
+      jsxAnalysis = null;
+    }
+  }
+
   // Создаем объект компонента
   const component = {
     type: "functional",
@@ -131,6 +143,7 @@ function processFunctionalComponent(path, code, result) {
     jsx: true,
     body: component.body,
     typeSignature: typeSignature,
+    jsxAnalysis: jsxAnalysis,
   };
 
   // Если компонент экспортируется, добавляем его в exports
@@ -202,6 +215,17 @@ function processFunctionDeclarationComponent(path, code, result) {
     bodyText = "/* function body */";
   }
 
+  // Анализируем JSX структуру
+  let jsxAnalysis = null;
+  if (path.node.body) {
+    try {
+      jsxAnalysis = analyzeJSX(path.node.body);
+    } catch (error) {
+      // Если анализ JSX не удался, просто продолжаем без него
+      jsxAnalysis = null;
+    }
+  }
+
   // Создаем объект компонента
   const component = {
     type: "functional",
@@ -226,6 +250,7 @@ function processFunctionDeclarationComponent(path, code, result) {
     returnType: returnType,
     jsx: true,
     body: component.body,
+    jsxAnalysis: jsxAnalysis,
   };
 
   // Если компонент экспортируется, добавляем его в exports

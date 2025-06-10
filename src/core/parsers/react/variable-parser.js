@@ -1,6 +1,7 @@
 const t = require("@babel/types");
 const { getTSType, getType } = require("./types");
 const { getCommonModifiers } = require("./common-utils");
+const { analyzeJSX } = require("./jsx-analyzer");
 
 /**
  * Парсит объектный литерал рекурсивно для React/Babel AST
@@ -360,8 +361,17 @@ function parseSimpleVariableStatement(
 
     // Извлекаем JSX контент
     let jsxContent = "";
+    let jsxAnalysis = null;
     if (node.init.body) {
       jsxContent = getNodeText(node.init.body);
+
+      // Анализируем JSX структуру
+      try {
+        jsxAnalysis = analyzeJSX(node.init.body);
+      } catch (error) {
+        // Если анализ JSX не удался, просто продолжаем без него
+        jsxAnalysis = null;
+      }
     }
 
     variableData.jsx = true;
@@ -370,6 +380,11 @@ function parseSimpleVariableStatement(
     variableData.returnType = "JSX.Element";
     variableData.returnResult = ["JSX.Element"];
     variableData.body = jsxContent;
+
+    // Добавляем детальный анализ JSX
+    if (jsxAnalysis) {
+      variableData.jsxAnalysis = jsxAnalysis;
+    }
 
     // Дублируем в functions для совместимости с тестами, которые ищут компоненты там
     context.functions[varName] = {
@@ -382,6 +397,7 @@ function parseSimpleVariableStatement(
       body: jsxContent,
       typeSignature: typeSignature,
       types: functionParams.map((p) => p.type).concat(["JSX.Element"]),
+      jsxAnalysis: jsxAnalysis,
     };
   }
 
