@@ -33,7 +33,7 @@
       <!--  Левая колонка  -->
 
       <div class="column-left card rounded-xl overflow-hidden shadow-lg">
-        <section class="bg-grey" id="theExercise">
+        <section class="bg-grey h-full" id="theExercise">
           <!-- Здесь загрузится упражнение -->
         </section>
       </div>
@@ -52,20 +52,21 @@
 
       <!-- Правая колонка   -->
 
-      <div class="column-right h-screen grid grid-rows-[auto_1fr]">
-        <div class="card rounded-xl overflow-hidden relative shadow-lg">
-          <div id="theTestResults">
-            <!-- Здесь загрузятся результаты тестов -->
-          </div>
+      <div
+        class="column-right h-full grid grid-rows-[minmax(auto,60%)_1fr] gap-y-[7px]"
+      >
+        <div
+          class="card rounded-xl flex flex-col relative shadow-lg overflow-hidden"
+          id="theTestResults"
+        >
+          <!-- Здесь загрузятся результаты тестов -->
         </div>
 
-        <div class="mt-4 card rounded-xl overflow-hidden shadow-lg">
-          <section id="theOutput" class="">
-            <!-- Здесь загрузятся вывод -->
-          </section>
-          <section id="theConsole" class="p-5">
-            <!-- Здесь загрузятся консоль -->
-          </section>
+        <div
+          class="card rounded-xl flex flex-col shadow-lg overflow-hidden"
+          id="theOutput"
+        >
+          <!-- Здесь загрузятся вывод -->
         </div>
       </div>
     </div>
@@ -135,14 +136,14 @@
     </template>
 
     <template id="output">
-      <section class="tabs bg-[#e6e8ed]">
+      <section class="shrink-0 tabs bg-[#e6e8ed]">
         <div class="active-tab w-fit px-5 py-4 bg-[#F4F5F8] font-bold">
           {{#if errors}}Ошибки при выполнении {{else}} Результат выполнения
           {{/if}}
         </div>
       </section>
 
-      <section class="p-5 h-full overflow-y-scroll">
+      <section class="p-5 flex-1 overflow-y-scroll">
         {{#if errors}} {{#each errors}}
         <p>🚨{{this.message}}</p>
         {{/each}} {{else}}
@@ -184,9 +185,9 @@
       </div>
     </template>
 
-    <template id="testResults">
+    <template id="testResults" class="flex flex-col">
       <section
-        class="tabs flex flex-wrap items-center bg-[#EFEFEF] text-[#201e2e]] font-bold"
+        class="tabs shrink-0 flex flex-wrap items-center bg-[#EFEFEF] text-[#201e2e]] font-bold"
       >
         <div class="">
           <div class="tab-active bg-[#F4F5F8] px-5 py-4">
@@ -209,7 +210,7 @@
 
       {{#if completed}}
 
-      <div class="rounded-xl bg-[#3CC39E] mx-4 mt-4 p-4">
+      <div class="shrink-0 rounded-xl bg-[#3CC39E] mx-4 mt-4 p-4">
         Задача выполнена! Код
         <span class="inline-block rounded bg-teal-600 px-1 text-white">
           {{task.confirmationCode}}
@@ -218,7 +219,7 @@
 
       {{/if}}
 
-      <section class="h-full overflow-scroll">
+      <div class="flex-1 overflow-y-scroll">
         <ul class="p-5">
           {{#each feedback}}
 
@@ -234,7 +235,7 @@
           </div>
           {{/if}} {{/each}} {{/each}}
         </ul>
-      </section>
+      </div>
     </template>
 
     <script src="/test_runner.js" defer></script>

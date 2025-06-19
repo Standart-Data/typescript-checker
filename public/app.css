@@ -117,7 +117,7 @@ details {
     display: flex;
     flex-wrap: wrap;
     margin: 16px;
-    max-height: calc(100vh);
+    max-height: 100vh;
 }
 
 .resizable-container  .card {
@@ -125,7 +125,7 @@ details {
     box-shadow: 0 5px 20px 0 rgba(0, 0, 0, 0.05);
 }
 
-.resizable-container  .card > * { height: 100%;}
+
 
 .resizable-container  .card-dark {
     background-color: var(--color-primary);
@@ -142,8 +142,8 @@ details {
 /* Изменение ширины */
 
 .resizer {
-    width: 20px; /* Ширина разделителя */
-    cursor: ew-resize; /* Курсор при наведении */
+    width: 7px;
+    cursor: ew-resize;
     background-image: url("/assets/three-dots-vertical.svg");
     background-position: center center;
     background-repeat: no-repeat;
